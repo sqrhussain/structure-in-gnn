@@ -11,7 +11,7 @@ class NetworkSplitShchur:
                  val_examples_per_class=30 , split_seed = 0):
         filename_prefix = data.name
         data = data[0]
-        filename = f'data/split_masks/{filename_prefix}-split{split_seed}.json'
+        filename = f'../data/split_masks/{filename_prefix}-split{split_seed}.json'
         if os.path.exists(filename):
             with open(filename) as json_file:
                 stored = json.load(json_file)

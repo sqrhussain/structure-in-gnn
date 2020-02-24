@@ -36,6 +36,8 @@ def read_network(features_path,edge_path,directed,reverse):
 
     y = torch.tensor(target,dtype=torch.long)
     n = len(target)
+
+    x = torch.tensor(np.array(feats), dtype=torch.float)
     
     print('Read features: DONE')
     # 3. Split similar to Planetoid

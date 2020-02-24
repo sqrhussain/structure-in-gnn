@@ -3,8 +3,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-from evaluation.embedding_evaluation_framework import test_n2v
-from data.cora_loader import FeatureOnlyData
+from src.evaluation.embedding_evaluation_module import test_n2v
+from src.data.data_loader import FeatureOnlyData
 import argparse
 
 num_splits = 100
@@ -18,14 +18,6 @@ def report_test_acc_unsupervised_embedding(dataset,speedup=False):
     tests = tests + test
     return tests
 
-
-# parser = argparse.ArgumentParser(description = "Test accuracy for features-only case using logistic regression.")
-
-# parser.add_argument('--dataset',
-#                 default = "cora",
-#                 help = 'Dataset name. Default is cora.')
-# args = parser.parse_args()
-# dataset = args.dataset
 
 val_out = f'test_acc/features-only-baseline.csv'
 if os.path.exists(val_out):
