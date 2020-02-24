@@ -16,14 +16,12 @@ def read_network(features_path,edge_path,directed,reverse):
     class_rename = {}
     cnt = 0
     class_cnt = 0
-    isCoCitDataset = False
     print('Read features: RUNNING')
     with open(features_path, 'r') as f:
         for line in f:
             info = line.split()
             if len(info) == 1:
                 info = line.split(',')
-                isCoCitDataset = True
             rename[info[0]] = cnt
             feats.append(np.array([float(x) for x in info[1:-1]]))
             if info[-1] not in class_rename:
@@ -59,7 +57,7 @@ def read_network(features_path,edge_path,directed,reverse):
                          if line.split()[0] in rename and line.split()[1] in rename])
     G1.remove_edges_from(G1.selfloop_edges())
     G2.remove_edges_from(G2.selfloop_edges())
-    row =[]
+    row = []
     col = []
     if not reverse:
         row = row + [e[0] for e in G1.edges()] 
@@ -75,7 +73,7 @@ def read_network(features_path,edge_path,directed,reverse):
         is_rev = is_rev + [0] * len(G1.edges())
     if reverse or not directed:
         is_rev = is_rev + [1] * len(G1.edges())
-    print(f' {len(is_rev)} reversed edges')
+
     assert (len(is_rev) == edge_index.shape[1])
             
     data = Data(x=x, edge_index=edge_index, y=y)

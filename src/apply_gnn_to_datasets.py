@@ -32,28 +32,36 @@ parser.add_argument('--conf',
                     type=bool,
                     default=False,
                     help='Is configuration model evaluation. Default is False.')
+parser.add_argument('--sbm',
+                    type=bool,
+                    default=False,
+                    help='Is SBM evaluation. Default is False.')
 parser.add_argument('--heads',
                     type=int,
                     default=4,
                     help='Attention heads. Default is 4.')
 parser.add_argument('--dataset',
-                    default="cora",
+                    default="pubmed",
                     help='Dataset name. Default is cora.')
 parser.add_argument('--model',
                     default="gcn",
                     help='Model name. Default is GCN.')
 parser.add_argument('--splits',
                     type=int,
-                    default=100,
+                    default=5,
                     help='Number of random train/validation/test splits. Default is 100.')
 parser.add_argument('--runs',
                     type=int,
-                    default=20,
+                    default=5,
                     help='Number of random initializations of the model. Default is 20.')
 parser.add_argument('--conf_inits',
                     type=int,
                     default=10,
                     help='Number of configuration model runs. Default is 10.')
+parser.add_argument('--sbm_inits',
+                    type=int,
+                    default=10,
+                    help='Number of SBM runs. Default is 10.')
 parser.add_argument('--directionality',
                     default='undirected',
                     help='Directionality: undirected/directed/reversed. Default is undirected.')
@@ -66,9 +74,9 @@ print(os.getcwd())
 
 isDirected = (args.directionality != 'undirected')
 isReversed = (args.directionality == 'reversed')
-dataset = GraphDataset(f'/tmp/{args.dataset}4{("_" + args.directionality) if isDirected else ""}', args.dataset,
-                       f'../data/graphs/raw/{args.dataset}/{args.dataset}.cites',
-                       f'../data/graphs/raw/{args.dataset}/{args.dataset}.content',
+dataset = GraphDataset(f'../data/tmp/{args.dataset}{("_" + args.directionality) if isDirected else ""}', args.dataset,
+                       f'../data/graphs/processed/{args.dataset}/{args.dataset}.cites',
+                       f'../data/graphs/processed/{args.dataset}/{args.dataset}.content',
                        directed=isDirected, reverse=isReversed)
 
 name2conv = {'gcn': GCNConv, 'sage': SAGEConv, 'gat': GATConv, 'rgcn': RGCNConv}
