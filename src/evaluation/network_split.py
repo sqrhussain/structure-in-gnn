@@ -5,13 +5,13 @@ import random
 import json
 import os 
 
-# TODO correct name Shchur
-class NetworkSplitShcur:
+class NetworkSplitShchur:
     
-    def __init__(self, data,filename_prefix, train_examples_per_class=20,early_examples_per_class=20,
+    def __init__(self, data, train_examples_per_class=20,early_examples_per_class=20,
                  val_examples_per_class=30 , split_seed = 0):
-        # TODO change /tmp/masks to a custom prefix
-        filename = f'/tmp/masks{filename_prefix}-split{split_seed}.json'
+        filename_prefix = data.name
+        data = data[0]
+        filename = f'data/split_masks/{filename_prefix}-split{split_seed}.json'
         if os.path.exists(filename):
             with open(filename) as json_file:
                 stored = json.load(json_file)

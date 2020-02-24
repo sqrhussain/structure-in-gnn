@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import torch
-from data.cora_loader import CitationNetwork,CocitationNetwork,ConfigurationModelCitationNetwork
 from models.multi_layered_model import MonoModel,BiModel,TriModel
 from torch_geometric.nn import GCNConv,SAGEConv,GATConv
 import time
@@ -10,14 +9,16 @@ import numpy as np
 import random
 import warnings
 import pandas as pd
-from evaluation.network_split import NetworkSplitShcur
+from evaluation.network_split import NetworkSplitShchur
 
 
 
 def run_and_eval_model(dataset,channels,modelType,architecture,
                        lr,wd,heads,dropout,
                        epochs=200,
-                       split_seed=0,init_seed=0):
+                       split_seed=0,init_seed=0,
+                       test_score=False, actual_predictions = False):
+
     # training process (without batches/transforms)
     
     # Uncomment to test sources of randomness
@@ -35,9 +36,7 @@ def run_and_eval_model(dataset,channels,modelType,architecture,
         model = architecture(modelType,dataset,channels,dropout).to(device)
     
     
-    print('split started')
-    split = NetworkSplitShcur(data,dataset.name,early_examples_per_class=0,split_seed=split_seed,speedup=(dataset.name == 'cora_full'))
-    print('split finished')
+    split = NetworkSplitShchur(dataset,early_examples_per_class=0,split_seed=split_seed)
     
     optimizer = torch.optim.Adam(model.parameters(),lr=lr,weight_decay=wd)
     model.train() # to enter training phase
@@ -61,7 +60,6 @@ def run_and_eval_model(dataset,channels,modelType,architecture,
             maxacc = acc
             chosen=copy.deepcopy(model)
         if epoch > 10 and acc*10 < sum(accs[-11:-1]):
-#             print('stopped at epoch {}'.format(epoch))
             stopped_at = epoch
             break
         model.train()
@@ -69,24 +67,24 @@ def run_and_eval_model(dataset,channels,modelType,architecture,
     _,pred = chosen(data).max(dim=1) # take prediction out of softmax
     correct = float(pred[split.val_mask].eq(data.y[split.val_mask]).sum().item())
     val_acc = correct / float(split.val_mask.sum().item())
-    
-    correct = float(pred[split.test_mask].eq(data.y[split.test_mask]).sum().item())
-    test_acc = correct / float(split.test_mask.sum().item())
-
-
-    return val_acc,test_acc,stopped_at
+    if test_score:
+        correct = float(pred[split.test_mask].eq(data.y[split.test_mask]).sum().item())
+        test_acc = correct / float(split.test_mask.sum().item())
+        return val_acc,stopped_at,test_acc
+    return val_acc, stopped_at
 
 def eval_multiple(dataset,channels,modelType,architecture,
                   lr,wd,heads, dropout,
-                  runs=100,epochs=50,split_seed = 0):
+                  runs=100,epochs=50,split_seed = 0,
+                  test_score=False, actual_predictions = False):
     start = time.time()
     val_accs = []
     test_accs = []
     stoppeds = []
     for i in range(runs):
-        val_acc,test_acc, stopped = run_and_eval_model(dataset,channels,modelType,architecture,lr=lr,wd=wd,epochs=epochs,
+        val_acc, stopped,test_acc = run_and_eval_model(dataset,channels,modelType,architecture,lr=lr,wd=wd,epochs=epochs,
                                        heads=heads, dropout=dropout,
-                                       split_seed=split_seed, init_seed=i)
+                                       split_seed=split_seed, init_seed=i,test_score=test_score,actual_predictions=actual_predictions)
         val_accs.append(val_acc)
         test_accs.append(test_acc)
         stoppeds.append(stopped)
@@ -96,17 +94,15 @@ def eval_multiple(dataset,channels,modelType,architecture,
     print(f'tes: {test_accs}')
     print(f'sto: {stoppeds}')
 
-    return val_accs,test_accs,stoppeds
+    return val_accs,stoppeds,test_accs
 
 
 def eval_archs(dataset,
                conv,
                channel_size,dropout,lr,wd,heads,
                models=[MonoModel, BiModel, TriModel],
-              num_splits=100,num_runs=20,df_val=None):
-#     if val_out == None:
-#         val_out = f'val_{conv.__name__}.csv'
-    
+               num_splits=100,num_runs=20,df_val=None,
+               test_score=False, actual_predictions = False):
     
     chs = 0
     for model in models:
@@ -114,24 +110,19 @@ def eval_archs(dataset,
         val_accs = []
         test_accs = []
         stoppeds = []
-        fileout = f'acc_{num_splits}_{num_runs}/{conv.__name__}_{model.__name__}_ch{channel_size}_lr{lr}_wd{wd}_dropout{dropout}_heads{heads}.out'
-        print(f'>> {fileout}')
-        with open(fileout,'w') as f:
-            start = time.time()
-            for seed in range(num_splits):
-                val_acc,test_acc,stopped = eval_multiple(dataset,[channel_size//chs//heads],conv,runs=num_runs,epochs=200,split_seed=seed,
-                                                            architecture=model,lr=lr,wd=wd,heads=heads,dropout=dropout)
-#                 f.write('{} {} accuracy: {:.2f} +-{:.1f}\n'.format(conv.__name__,model.__name__,monogcn*100,monogcnstd*100))
-                val_accs += val_acc
-                test_accs += test_acc
-                stoppeds+= stopped
-                
-            val_avg = np.array(val_accs).mean()
-            val_std = np.array(val_accs).std()
+        start = time.time()
+        for seed in range(num_splits):
+            val_acc,stopped,test_acc = eval_multiple(dataset,[channel_size//chs//heads],conv,runs=num_runs,epochs=200,split_seed=seed,
+                                                        architecture=model,lr=lr,wd=wd,heads=heads,dropout=dropout)
+            val_accs += val_acc
+            test_accs += test_acc
+            stoppeds+= stopped
             
-            test_avg = np.array(test_accs).mean()
-            test_std = np.array(test_accs).std()
-            f.write('{} {} accuracy: {:.2f} +-{:.1f}\n'.format(conv.__name__,model.__name__,val_avg*100,val_std*100))
+        val_avg = np.array(val_accs).mean()
+        val_std = np.array(val_accs).std()
+        
+        test_avg = np.array(test_accs).mean()
+        test_std = np.array(test_accs).std()
         elapsed = time.time() - start
         df_val = df_val.append({'conv':conv.__name__,'arch':model.__name__[0],'ch':channel_size,
                                'dropout':dropout,'lr':lr,'wd':wd,'heads':heads,
@@ -139,8 +130,6 @@ def eval_archs(dataset,
                                 'val_accs':val_accs,'val_avg':val_avg,'val_std':val_std,
                                 'test_accs':test_accs,'test_avg':test_avg,'test_std':test_std,
                                 'stopped':stoppeds,'elapsed':elapsed},ignore_index=True)
-#         df_val.to_csv(val_out,index=False)
-#         print(df_val.shape)
     return df_val
     
     

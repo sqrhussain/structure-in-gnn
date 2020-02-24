@@ -1,6 +1,6 @@
 import torch
 from torch_geometric.data import InMemoryDataset, Data
-from network_split import NetworkSplitShcur
+from network_split import NetworkSplitShchur
 from sklearn.linear_model import LogisticRegression
 
 def test(train_z, train_y, test_z, test_y, solver='lbfgs',
@@ -16,28 +16,24 @@ def test(train_z, train_y, test_z, test_y, solver='lbfgs',
 
 def eval_n2v(data,num_splits=100):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    name = data.name
-    data = data[0]
-    z = data.x
+    z = data[0].x
     z = z.to(device)
     vals = []
     for i in range(num_splits):
-        split = NetworkSplitShcur(data,name,early_examples_per_class=0,split_seed=i)
-        val = test(z[split.train_mask], data.y[split.train_mask],
-                         z[split.val_mask], data.y[split.val_mask], max_iter=100)
+        split = NetworkSplitShchur(data,early_examples_per_class=0,split_seed=i)
+        val = test(z[split.train_mask], data[0].y[split.train_mask],
+                         z[split.val_mask], data[0].y[split.val_mask], max_iter=100)
         vals.append(val)
     return vals
 
 def test_n2v(data,num_splits=100,speedup=False):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    name = data.name
-    data = data[0]
-    z = data.x
+    z = data[0].x
     z = z.to(device)
     tests = []
     for i in range(num_splits):
-        split = NetworkSplitShcur(data,name,early_examples_per_class=0,split_seed=i,speedup=speedup)
-        ts = test(z[split.train_mask], data.y[split.train_mask],
-                         z[split.test_mask], data.y[split.test_mask], max_iter=150)
+        split = NetworkSplitShchur(data,name,early_examples_per_class=0,split_seed=i,speedup=speedup)
+        ts = test(z[split.train_mask], data[0].y[split.train_mask],
+                         z[split.test_mask], data[0].y[split.test_mask], max_iter=150)
         tests.append(ts)
     return tests

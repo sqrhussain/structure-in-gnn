@@ -37,11 +37,6 @@ def read_network(features_path,edge_path,directed,reverse):
     y = torch.tensor(target,dtype=torch.long)
     n = len(target)
     
-    if isCoCitDataset:
-        x = torch.tensor(np.eye(n),dtype=torch.float)
-    else:
-        x = torch.tensor(feats,dtype=torch.float)
-
     print('Read features: DONE')
     # 3. Split similar to Planetoid
     
@@ -70,17 +65,15 @@ def read_network(features_path,edge_path,directed,reverse):
     if reverse or not directed:
         row = row + [e[0] for e in G2.edges()]
         col = col + [e[1] for e in G2.edges()]
-    print(len(row))
     print('Read edges: DONE')
+    print(f' {len(row)} edges')
     edge_index = torch.stack([torch.tensor(row), torch.tensor(col)], dim=0)
     is_rev = []
-    print(reverse)
     if not reverse:
         is_rev = is_rev + [0] * len(G1.edges())
     if reverse or not directed:
         is_rev = is_rev + [1] * len(G1.edges())
-    print(len(is_rev))
-    print(edge_index.shape[1])
+    print(f' {len(is_rev)} reversed edges')
     assert (len(is_rev) == edge_index.shape[1])
             
     data = Data(x=x, edge_index=edge_index, y=y)

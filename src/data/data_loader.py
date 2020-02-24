@@ -1,7 +1,7 @@
 import torch
 from torch_geometric.data import InMemoryDataset
 import os.path as osp
-from data.citation_loader import read_network
+from data.data_load_helper import read_network
 from shutil import copyfile
 
 
@@ -17,7 +17,7 @@ class GraphDataset(InMemoryDataset):
         self.directed = directed
         self.reverse = reverse
         
-        super(CitationNetwork, self).__init__(root, None, None)
+        super(GraphDataset, self).__init__(root, None, None)
         self.data, self.slices = torch.load(self.processed_paths[0])
 
     @property

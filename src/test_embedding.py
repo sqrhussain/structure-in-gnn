@@ -3,7 +3,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-from embedding_evaluation_framework import EmbeddingData, test_n2v
+from evaluation.embedding_evaluation_framework import test_n2v
+from data.cora_loader import EmbeddingData
 
 import argparse
 
