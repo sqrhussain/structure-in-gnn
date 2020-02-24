@@ -122,27 +122,27 @@ def transform_pubmed(inFeat, outFeat, inNet, outNet):
 def create_cora():
     dataset_name = 'cora'
     cora_url = 'https://linqs-data.soe.ucsc.edu/public/lbc/cora.tgz'
-    target_raw = '../../data/graphs/raw/cora.tgz'
-    dir_path = '../../data/graphs/raw'
-    target_processed = '../../data/graphs/processed'
+    target_raw = 'data/graphs/raw/cora.tgz'
+    dir_path = 'data/graphs/raw'
+    target_processed = 'data/graphs/processed'
     create_citation_dataset(dataset_name, cora_url, target_raw, dir_path, target_processed)
 
 
 def create_citeseer():
     dataset_name = 'citeseer'
     citeseer_url = 'https://linqs-data.soe.ucsc.edu/public/lbc/citeseer.tgz'
-    target_raw = '../../data/graphs/raw/citeseer.tgz'
-    dir_path = '../../data/graphs/raw'
-    target_processed = '../../data/graphs/processed'
+    target_raw = 'data/graphs/raw/citeseer.tgz'
+    dir_path = 'data/graphs/raw'
+    target_processed = 'data/graphs/processed'
     create_citation_dataset(dataset_name, citeseer_url, target_raw, dir_path, target_processed)
 
 
 def create_pubmed():
     dataset_name = 'pubmed'
     pubmed_url = 'https://linqs-data.soe.ucsc.edu/public/Pubmed-Diabetes.tgz'
-    dir_path = '../../data/graphs/raw'
+    dir_path = 'data/graphs/raw'
     target_tmp_file = dir_path + '/Pubmed-Diabetes.tgz'
-    target_processed = '../../data/graphs/processed'
+    target_processed = 'data/graphs/processed'
 
     # download dataset
     if not os.path.exists(dir_path + '/' + dataset_name):
@@ -164,4 +164,4 @@ def create_pubmed():
 
 
 if __name__ == '__main__':
-    create_pubmed()
+    create_cora()

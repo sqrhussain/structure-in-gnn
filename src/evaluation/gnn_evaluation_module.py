@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import torch
-from models.multi_layered_model import MonoModel, BiModel, TriModel
+from src.models.multi_layered_model import MonoModel, BiModel, TriModel
 from torch_geometric.nn import GCNConv, SAGEConv, GATConv
 import time
 import torch.nn.functional as F

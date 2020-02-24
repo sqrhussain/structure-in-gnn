@@ -48,11 +48,11 @@ parser.add_argument('--model',
                     help='Model name. Default is GCN.')
 parser.add_argument('--splits',
                     type=int,
-                    default=5,
+                    default=100,
                     help='Number of random train/validation/test splits. Default is 100.')
 parser.add_argument('--runs',
                     type=int,
-                    default=5,
+                    default=20,
                     help='Number of random initializations of the model. Default is 20.')
 parser.add_argument('--conf_inits',
                     type=int,
@@ -66,17 +66,17 @@ parser.add_argument('--directionality',
                     default='undirected',
                     help='Directionality: undirected/directed/reversed. Default is undirected.')
 args = parser.parse_args()
+
 if args.directionality not in {'undirected', 'reversed', 'directed'}:
     print("--directionality must be in {'undirected','reversed','directed'}")
     exit(1)
 
-print(os.getcwd())
 
 isDirected = (args.directionality != 'undirected')
 isReversed = (args.directionality == 'reversed')
-dataset = GraphDataset(f'../data/tmp/{args.dataset}{("_" + args.directionality) if isDirected else ""}', args.dataset,
-                       f'../data/graphs/processed/{args.dataset}/{args.dataset}.cites',
-                       f'../data/graphs/processed/{args.dataset}/{args.dataset}.content',
+dataset = GraphDataset(f'data/tmp/{args.dataset}{("_" + args.directionality) if isDirected else ""}', args.dataset,
+                       f'data/graphs/processed/{args.dataset}/{args.dataset}.cites',
+                       f'data/graphs/processed/{args.dataset}/{args.dataset}.content',
                        directed=isDirected, reverse=isReversed)
 
 name2conv = {'gcn': GCNConv, 'sage': SAGEConv, 'gat': GATConv, 'rgcn': RGCNConv}

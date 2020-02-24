@@ -5,13 +5,13 @@ import random
 import json
 import os 
 
+
 class NetworkSplitShchur:
-    
     def __init__(self, data, train_examples_per_class=20,early_examples_per_class=20,
                  val_examples_per_class=30 , split_seed = 0):
         filename_prefix = data.name
         data = data[0]
-        filename = f'../data/split_masks/{filename_prefix}-split{split_seed}.json'
+        filename = f'data/split_masks/{filename_prefix}-split{split_seed}.json'
         if os.path.exists(filename):
             with open(filename) as json_file:
                 stored = json.load(json_file)
@@ -63,12 +63,9 @@ class NetworkSplitShchur:
         self.early_mask = torch.BoolTensor(self.early_mask)
         self.val_mask = torch.BoolTensor(self.val_mask)
         self.test_mask = torch.BoolTensor(self.test_mask)
-        
-        
+
         all_ones = self.train_mask | self.early_mask | self.val_mask | self.test_mask
         assert (all_ones.sum().item() == num_samples)
 
-        
         with open(filename, 'w') as outfile:
             json.dump(tostore, outfile)
-        
