@@ -2,6 +2,8 @@ import wget
 import tarfile
 import os
 import networkx as nx
+import scipy
+
 
 
 def create_citation_dataset(dataset_name, url, target_tmp_file, dir_path, target_processed_path,
@@ -161,7 +163,6 @@ def create_pubmed():
                 f'{target_processed}/{dataset_name}/{dataset_name}.content',
                 f'{dir_path}/Pubmed-Diabetes/data/Pubmed-Diabetes.DIRECTED.cites.tab',
                 f'{target_processed}/{dataset_name}/{dataset_name}.cites')
-
 
 if __name__ == '__main__':
     create_cora()

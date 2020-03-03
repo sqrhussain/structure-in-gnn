@@ -124,9 +124,9 @@ def eval(dataset, channel_size, dropout, lr, wd, heads):
 def eval_conf_model(df):
     df["confmodel_num"] = ""
     for i in range(args.conf_inits):
-        dataset = GraphDataset(f'/tmp/{args.dataset}-conf{i}', args.dataset,
-                               f'data/graphs/confmodel_graphs/{args.dataset}/{i}/{args.dataset}.cites',
-                               f'data/graphs/raw/{args.dataset}/{args.dataset}.content',
+        dataset = GraphDataset(f'data/tmp/{args.dataset}-confmodel{i}', args.dataset,
+                               f'data/graphs/confmodel/{args.dataset}/{args.dataset}_confmodel_{i}.cites',
+                               f'data/graphs/processed/{args.dataset}/{args.dataset}.content',
                                directed=isDirected, reverse=isReversed)
         df_cur = eval(dataset=dataset, channel_size=args.size, lr=args.lr,
                       dropout=args.dropout, wd=args.wd, heads=args.heads)
