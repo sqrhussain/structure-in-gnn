@@ -41,7 +41,7 @@ def create_louvain_communities_dict(G, reverse_node_mappings):
             reverse_node_id]
         if node_communities_louvain[reverse_node_id] not in distinct_communities:
             distinct_communities.append(node_communities_louvain[reverse_node_id])
-    return node_communities_louvain_original_ids, len(distinct_communities)
+    return node_communities_louvain_original_ids
 
 
 def store_in_file(community_dict, filepath):
@@ -52,7 +52,7 @@ def store_in_file(community_dict, filepath):
 def load_from_file(path):
     with open(path, 'rb') as handle:
         ret = pickle.load(handle)
-    return ret[0], ret[1]
+    return ret
 
 
 def calculate_edge_probabilities(G, communities, node_id_community_id_dict, reverse_node_mappings=None):
@@ -109,7 +109,7 @@ def calculate_edge_probabilities(G, communities, node_id_community_id_dict, reve
 
 
 def has_selfloops(G):
-    return G.number_of_selfloops() > 0
+    return nx.number_of_selfloops(G) > 0
 
 
 def get_block_sizes(communities):
@@ -165,12 +165,12 @@ def create_multiple_sbm_graphs(graph_path, community_path, output_prefix, output
     graph, node_mappings, reverse_node_mappings = create_graph_and_node_mappings_from_file(graph_path)
     # community detection
     if not os.path.exists(community_path):
-        node_communities_louvain, distinct_louvain_count = create_louvain_communities_dict(graph, reverse_node_mappings)
-        store_in_file([node_communities_louvain, distinct_louvain_count], community_path)
+        node_communities_louvain = create_louvain_communities_dict(graph, reverse_node_mappings)
+        store_in_file(node_communities_louvain, community_path)
     else:
-        node_communities_louvain, distinct_louvain_count = load_from_file(community_path)
+        node_communities_louvain = load_from_file(community_path)
     # build stochastic matrix
-    block_sizes, edge_probabilities, node_lists = build_stochastic_block_matrix(graph, node_communities_louvain)
+    block_sizes, edge_probabilities, node_lists = build_stochastic_block_matrix(graph, node_mappings, reverse_node_mappings, node_communities_louvain)
     for i in range(inits):
         create_sbm_graph(graph, block_sizes, edge_probabilities, node_lists,
                          f'{output_prefix}_{i}{output_suffix}', i)
@@ -180,3 +180,12 @@ if __name__ == "__main__":
     create_multiple_sbm_graphs('data/graphs/processed/cora/cora.cites',
                                'data/community_id_dicts/cora/cora_louvain.pickle',
                                'data/graphs/sbm/cora/cora_sbm')
+    create_multiple_sbm_graphs('data/graphs/processed/citeseer/citeseer.cites',
+                               'data/community_id_dicts/citeseer/citeseer_louvain.pickle',
+                               'data/graphs/sbm/citeseer/citeseer_sbm')
+    create_multiple_sbm_graphs('data/graphs/processed/pubmed/pubmed.cites',
+                               'data/community_id_dicts/pubmed/pubmed_louvain.pickle',
+                               'data/graphs/sbm/pubmed/pubmed_sbm')
+    create_multiple_sbm_graphs('data/graphs/processed/cora_full/cora_full.cites',
+                               'data/community_id_dicts/cora_full/cora_full_louvain.pickle',
+                               'data/graphs/sbm/cora_full/cora_full_sbm')
