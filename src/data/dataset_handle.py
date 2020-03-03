@@ -2,7 +2,6 @@ import wget
 import tarfile
 import os
 import networkx as nx
-import scipy
 
 
 
