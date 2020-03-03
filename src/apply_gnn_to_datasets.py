@@ -82,8 +82,8 @@ dataset = GraphDataset(f'data/tmp/{args.dataset}{("_" + args.directionality) if 
 name2conv = {'gcn': GCNConv, 'sage': SAGEConv, 'gat': GATConv, 'rgcn': RGCNConv}
 
 # TODO find a better way to create names
-val_out = f'../reports/results/test_acc/{args.model}_{args.dataset}{"_conf" if args.conf else ""}' \
-          f'{args.dataset}{"_sbm" if args.sbm else ""}{("_" + args.directionality) if isDirected else ""}.csv'
+val_out = f'reports/results/test_acc/{args.model}_{args.dataset}{"_conf" if args.conf else ""}' \
+          f'{"_sbm" if args.sbm else ""}{("_" + args.directionality) if isDirected else ""}.csv'
 
 if os.path.exists(val_out):
     df_val = pd.read_csv(val_out)
@@ -125,8 +125,8 @@ def eval_conf_model(df):
     df["confmodel_num"] = ""
     for i in range(args.conf_inits):
         dataset = GraphDataset(f'/tmp/{args.dataset}-conf{i}', args.dataset,
-                               f'../data/graphs/confmodel_graphs/{args.dataset}/{i}/{args.dataset}.cites',
-                               f'../data/graphs/raw/{args.dataset}/{args.dataset}.content',
+                               f'data/graphs/confmodel_graphs/{args.dataset}/{i}/{args.dataset}.cites',
+                               f'data/graphs/raw/{args.dataset}/{args.dataset}.content',
                                directed=isDirected, reverse=isReversed)
         df_cur = eval(dataset=dataset, channel_size=args.size, lr=args.lr,
                       dropout=args.dropout, wd=args.wd, heads=args.heads)
