@@ -133,10 +133,25 @@ def eval_conf_model(df):
         df_cur['confmodel_num'] = i
         df = pd.concat([df, df_cur])
         df.to_csv(val_out, index=False)
+        
+def eval_sbm(df):
+    df["sbm_num"] = ""
+    for i in range(args.sbm_inits):
+        dataset = GraphDataset(f'data/tmp/{args.dataset}-sbm{i}', args.dataset,
+                               f'data/graphs/sbm/{args.dataset}/{args.dataset}_sbm_{i}.cites',
+                               f'data/graphs/processed/{args.dataset}/{args.dataset}.content',
+                               directed=isDirected, reverse=isReversed)
+        df_cur = eval(dataset=dataset, channel_size=args.size, lr=args.lr,
+                      dropout=args.dropout, wd=args.wd, heads=args.heads)
+        df_cur['sbm_num'] = i
+        df = pd.concat([df, df_cur])
+        df.to_csv(val_out, index=False)
 
 
 if args.conf:
     eval_conf_model(df_val)
+elif args.sbm:
+    eval_sbm(df_val)
 else:
     df_cur = eval(dataset=dataset, channel_size=args.size, lr=args.lr,
                   dropout=args.dropout, wd=args.wd, heads=args.heads)

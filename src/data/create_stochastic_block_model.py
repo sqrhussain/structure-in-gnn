@@ -155,8 +155,10 @@ def build_stochastic_block_matrix(graph, node_mappings, reverse_node_mappings, n
     return block_sizes, edge_probabilities, nodelists
 
 
-def create_sbm_graph(graph, block_sizes, edge_probabilities, node_lists, output_path, seed):
+
+def create_sbm_graph(graph, block_sizes, edge_probabilities, node_lists, output_path, seed, reverse_node_mappings):
     sbm = stochastic_block_model(block_sizes, edge_probabilities, node_lists, seed, True, has_selfloops(graph))
+    sbm = nx.relabel_nodes(sbm, reverse_node_mappings)
     nx.write_edgelist(sbm, output_path)
 
 
@@ -173,7 +175,7 @@ def create_multiple_sbm_graphs(graph_path, community_path, output_prefix, output
     block_sizes, edge_probabilities, node_lists = build_stochastic_block_matrix(graph, node_mappings, reverse_node_mappings, node_communities_louvain)
     for i in range(inits):
         create_sbm_graph(graph, block_sizes, edge_probabilities, node_lists,
-                         f'{output_prefix}_{i}{output_suffix}', i)
+                         f'{output_prefix}_{i}{output_suffix}', i, reverse_node_mappings)
 
 
 if __name__ == "__main__":

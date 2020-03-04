@@ -55,8 +55,8 @@ def read_network(features_path,edge_path,directed,reverse):
         G2 = nx.DiGraph([[rename[line.split()[1]],rename[line.split()[0]]]
                          for line in f
                          if line.split()[0] in rename and line.split()[1] in rename])
-    G1.remove_edges_from(G1.selfloop_edges())
-    G2.remove_edges_from(G2.selfloop_edges())
+    G1.remove_edges_from(nx.selfloop_edges(G1))
+    G2.remove_edges_from(nx.selfloop_edges(G2))
     row = []
     col = []
     if not reverse:
