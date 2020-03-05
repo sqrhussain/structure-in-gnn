@@ -1,7 +1,7 @@
 import torch
 from torch_geometric.data import InMemoryDataset
 import os.path as osp
-from src.data.data_load_helper import read_network
+from src.data.data_load_helper import read_network, load_embedding
 from shutil import copyfile
 
 

@@ -124,7 +124,7 @@ def eval(dataset, channel_size, dropout, lr, wd, heads):
 def eval_conf_model(df):
     df["confmodel_num"] = ""
     for i in range(args.conf_inits):
-        dataset = GraphDataset(f'data/tmp/{args.dataset}-confmodel{i}', args.dataset,
+        dataset = GraphDataset(f'data/tmp/{args.dataset}{("_" + args.directionality) if isDirected else ""}-confmodel{i}', args.dataset,
                                f'data/graphs/confmodel/{args.dataset}/{args.dataset}_confmodel_{i}.cites',
                                f'data/graphs/processed/{args.dataset}/{args.dataset}.content',
                                directed=isDirected, reverse=isReversed)
@@ -137,7 +137,7 @@ def eval_conf_model(df):
 def eval_sbm(df):
     df["sbm_num"] = ""
     for i in range(args.sbm_inits):
-        dataset = GraphDataset(f'data/tmp/{args.dataset}-sbm{i}', args.dataset,
+        dataset = GraphDataset(f'data/tmp/{args.dataset}{("_" + args.directionality) if isDirected else ""}-sbm{i}', args.dataset,
                                f'data/graphs/sbm/{args.dataset}/{args.dataset}_sbm_{i}.cites',
                                f'data/graphs/processed/{args.dataset}/{args.dataset}.content',
                                directed=isDirected, reverse=isReversed)

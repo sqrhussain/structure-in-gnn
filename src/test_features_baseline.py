@@ -7,13 +7,12 @@ from src.data.data_loader import FeatureOnlyData
 num_splits = 100
 
 
-def report_test_acc_unsupervised_embedding(dataset, speedup=False):
+def report_test_acc_unsupervised_embedding(dataset):
     tests = []
-    emb = FeatureOnlyData(f'data/tmp/{dataset.capitalize()}FeatsOnly',
-                          f'data/graphs/processed/{dataset}/{dataset}.content',
-                          dataset)
+    emb = FeatureOnlyData(f'data/tmp/{dataset.capitalize()}FeatsOnly', dataset,
+                          f'data/graphs/processed/{dataset}/{dataset}.content')
     print(f'started test {dataset}')
-    test = test_method(emb[0], num_splits=num_splits, speedup=speedup)
+    test = test_method(emb, num_splits=num_splits)
     print(str(test) + '\n')
     tests = tests + test
     return tests
@@ -26,8 +25,9 @@ else:
     test_acc = pd.DataFrame(columns='method dataset test_acc test_avg test_std'.split())
 
 datasets = 'cora citeseer pubmed cora_full'.split()
+
 for dataset in datasets:
-    tests = report_test_acc_unsupervised_embedding(dataset=dataset, speedup=(dataset == 'cora_full'))
+    tests = report_test_acc_unsupervised_embedding(dataset=dataset)
     test_acc = test_acc.append({'method': 'features-only-baseline', 'dataset': dataset,
                                 'test_acc': tests, 'test_avg': np.mean(tests), 'test_std': np.std(tests)},
                                ignore_index=True)
