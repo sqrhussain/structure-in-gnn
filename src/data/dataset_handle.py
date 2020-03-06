@@ -6,8 +6,10 @@ import networkx as nx
 
 
 def create_citation_dataset(dataset_name, url, target_tmp_file, dir_path, target_processed_path,
-                            threshold=50):  # to use for CORA and CITESEER
-
+                            threshold=50,raw_folder_name = None):  # to use for CORA and CITESEER
+    
+    if raw_folder_name is None:
+        raw_folder_name = dataset_name
     # download dataset
     if not os.path.exists(dir_path + '/' + dataset_name):
         print(f'Downloading {url}...')
@@ -19,8 +21,8 @@ def create_citation_dataset(dataset_name, url, target_tmp_file, dir_path, target
     print('File downloaded and extracted!')
 
     # load features
-    features_path = f'{dir_path}/{dataset_name}/{dataset_name}.content'
-    edges_path = f'{dir_path}/{dataset_name}/{dataset_name}.cites'
+    features_path = f'{dir_path}/{raw_folder_name}/{dataset_name}.content'
+    edges_path = f'{dir_path}/{raw_folder_name}/{dataset_name}.cites'
     target = {}
     features = {}
     class_count = {}
@@ -57,9 +59,9 @@ def create_citation_dataset(dataset_name, url, target_tmp_file, dir_path, target
     # select biggest connected component
     undirected_graph = nx.Graph()  # undirected, just to find the biggest connected component
     undirected_graph.add_edges_from(edges)
-    largest_component = max(nx.connected_component_subgraphs(undirected_graph), key=len)
+    largest_component = max(nx.connected_components(undirected_graph), key=len)
 
-    nodes = largest_component.nodes
+    nodes = largest_component
     if not os.path.exists(f'{target_processed_path}/{dataset_name}'):
         os.mkdir(f'{target_processed_path}/{dataset_name}')
     edges = [e for e in edges if e[0] in nodes and e[1] in nodes]
@@ -138,6 +140,38 @@ def create_citeseer():
     create_citation_dataset(dataset_name, citeseer_url, target_raw, dir_path, target_processed)
 
 
+def create_texas():
+    dataset_name = 'texas'
+    texas_url = 'https://linqs-data.soe.ucsc.edu/public/lbc/WebKB.tgz'
+    target_raw = 'data/graphs/raw/WebKB.tgz'
+    dir_path = 'data/graphs/raw'
+    target_processed = 'data/graphs/processed'
+    create_citation_dataset(dataset_name, texas_url, target_raw, dir_path, target_processed, raw_folder_name = 'WebKB',threshold = 10)
+
+def create_washington():
+    dataset_name = 'washington'
+    washington_url = 'https://linqs-data.soe.ucsc.edu/public/lbc/WebKB.tgz'
+    target_raw = 'data/graphs/raw/WebKB.tgz'
+    dir_path = 'data/graphs/raw'
+    target_processed = 'data/graphs/processed'
+    create_citation_dataset(dataset_name, washington_url, target_raw, dir_path, target_processed, raw_folder_name = 'WebKB',threshold = 10)
+    
+def create_wisconsin():
+    dataset_name = 'wisconsin'
+    wisconsin_url = 'https://linqs-data.soe.ucsc.edu/public/lbc/WebKB.tgz'
+    target_raw = 'data/graphs/raw/WebKB.tgz'
+    dir_path = 'data/graphs/raw'
+    target_processed = 'data/graphs/processed'
+    create_citation_dataset(dataset_name, wisconsin_url, target_raw, dir_path, target_processed, raw_folder_name = 'WebKB',threshold = 10)
+    
+def create_cornell():
+    dataset_name = 'cornell'
+    cornell_url = 'https://linqs-data.soe.ucsc.edu/public/lbc/WebKB.tgz'
+    target_raw = 'data/graphs/raw/WebKB.tgz'
+    dir_path = 'data/graphs/raw'
+    target_processed = 'data/graphs/processed'
+    create_citation_dataset(dataset_name, cornell_url, target_raw, dir_path, target_processed, raw_folder_name = 'WebKB',threshold = 10)
+
 def create_pubmed():
     dataset_name = 'pubmed'
     pubmed_url = 'https://linqs-data.soe.ucsc.edu/public/Pubmed-Diabetes.tgz'
@@ -164,4 +198,6 @@ def create_pubmed():
                 f'{target_processed}/{dataset_name}/{dataset_name}.cites')
 
 if __name__ == '__main__':
-    create_cora()
+    create_cornell()
+    create_wisconsin()
+    create_washington()

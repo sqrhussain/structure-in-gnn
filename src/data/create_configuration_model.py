@@ -22,5 +22,6 @@ def generate_multiple_conf_models(graph_path, output_prefix,output_suffix = '.ci
 
 if __name__ == '__main__':
     generate_multiple_conf_models('data/graphs/processed/cora/cora.cites','data/graphs/confmodel/cora/cora_confmodel')
-    generate_multiple_conf_models('data/graphs/processed/citeseer/citeseer.cites','data/graphs/confmodel/citeseer/citeseer_confmodel')
-    generate_multiple_conf_models('data/graphs/processed/pubmed/pubmed.cites','data/graphs/confmodel/pubmed/pubmed_confmodel')
+    # generate_multiple_conf_models('data/graphs/processed/citeseer/citeseer.cites','data/graphs/confmodel/citeseer/citeseer_confmodel')
+    # generate_multiple_conf_models('data/graphs/processed/pubmed/pubmed.cites','data/graphs/confmodel/pubmed/pubmed_confmodel')
+    # generate_multiple_conf_models('data/graphs/processed/cora_full/cora_full.cites','data/graphs/confmodel/cora_full/cora_full_confmodel')

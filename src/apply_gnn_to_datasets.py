@@ -65,6 +65,16 @@ parser.add_argument('--sbm_inits',
 parser.add_argument('--directionality',
                     default='undirected',
                     help='Directionality: undirected/directed/reversed. Default is undirected.')
+                    
+parser.add_argument('--train_examples',
+                    type=int,
+                    default=20,
+                    help='Number of training examples per class. Default is 20.')
+parser.add_argument('--val_examples',
+                    type=int,
+                    default=30,
+                    help='Number of validation examples per class. Default is 30.')
+                    
 args = parser.parse_args()
 
 if args.directionality not in {'undirected', 'reversed', 'directed'}:
@@ -97,19 +107,24 @@ def eval_archs_gat(dataset, channel_size, dropout, lr, wd, heads, models=[MonoGA
     if isDirected:
         models = [MonoGAT]
     return eval_gnn(dataset, GATConv, channel_size, dropout, lr, wd, heads=heads,
-                      models=models, num_runs=args.runs, num_splits=args.splits, test_score=True)
+                      models=models, num_runs=args.runs, num_splits=args.splits, test_score=True,
+                      train_examples = args.train_examples, val_examples = args.val_examples)
 
 
 def eval_archs_gcn(dataset, conv, channel_size, dropout, lr, wd, models=[MonoModel, BiModel, TriModel]):
     if isDirected:
         models = [MonoModel]
     return eval_gnn(dataset, conv, channel_size, dropout, lr, wd, heads=1,
-                      models=models, num_runs=args.runs, num_splits=args.splits,test_score=True)
+                      models=models, num_runs=args.runs, num_splits=args.splits,test_score=True,
+                      train_examples = args.train_examples, val_examples = args.val_examples)
+
 
 
 def eval_archs_rgcn(dataset, channel_size, dropout, lr, wd, models=[MonoRGCN]):
     return eval_gnn(dataset, RGCNConv, channel_size, dropout, lr, wd, heads=1,
-                      models=models, num_runs=args.runs, num_splits=args.splits,test_score=True)
+                      models=models, num_runs=args.runs, num_splits=args.splits,test_score=True,
+                      train_examples = args.train_examples, val_examples = args.val_examples)
+
 
 
 def eval(dataset, channel_size, dropout, lr, wd, heads):

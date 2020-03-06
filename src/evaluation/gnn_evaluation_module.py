@@ -15,6 +15,7 @@ from src.evaluation.network_split import NetworkSplitShchur
 def train_gnn(dataset, channels, modelType, architecture,
               lr, wd, heads, dropout,
               epochs,
+              train_examples, val_examples,
               split_seed=0, init_seed=0,
               test_score=False, actual_predictions=False):
     # training process (without batches/transforms)
@@ -30,7 +31,8 @@ def train_gnn(dataset, channels, modelType, architecture,
     else:
         model = architecture(modelType, dataset, channels, dropout).to(device)
 
-    split = NetworkSplitShchur(dataset, early_examples_per_class=0, split_seed=split_seed)
+    split = NetworkSplitShchur(dataset, train_examples_per_class=train_examples,early_examples_per_class=0,
+                 val_examples_per_class=val_examples, split_seed=split_seed)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
     model.train()  # to enter training phase
@@ -70,6 +72,7 @@ def train_gnn(dataset, channels, modelType, architecture,
 
 def train_gnn_multiple_runs(dataset, channels, modelType, architecture,
                             lr, wd, heads, dropout,
+                            train_examples, val_examples,
                             runs, epochs, split_seed=0,
                             test_score=False, actual_predictions=False):
     start = time.time()
@@ -80,7 +83,8 @@ def train_gnn_multiple_runs(dataset, channels, modelType, architecture,
         val_acc, stopped, test_acc = train_gnn(dataset, channels, modelType, architecture, lr=lr, wd=wd, epochs=epochs,
                                                heads=heads, dropout=dropout,
                                                split_seed=split_seed, init_seed=i, test_score=test_score,
-                                               actual_predictions=actual_predictions)
+                                               actual_predictions=actual_predictions,
+                                               train_examples = train_examples, val_examples = val_examples)
         val_accs.append(val_acc)
         test_accs.append(test_acc)
         stoppeds.append(stopped)
@@ -98,7 +102,8 @@ def eval_gnn(dataset,
              channel_size, dropout, lr, wd, heads,
              models=[MonoModel, BiModel, TriModel],
              num_splits=100, num_runs=20,
-             test_score=False, actual_predictions=False):
+             test_score=False, actual_predictions=False,
+             train_examples = 20, val_examples = 30):
     columns = ['conv', 'arch', 'ch', 'dropout', 'lr', 'wd', 'heads', 'splits', 'inits',
                'val_accs', 'val_avg', 'val_std', 'stopped', 'elapsed']
     if test_score:
@@ -115,7 +120,8 @@ def eval_gnn(dataset,
             val_acc, stopped, test_acc = train_gnn_multiple_runs(dataset, [channel_size // channels // heads], conv,
                                                                  runs=num_runs, epochs=200, split_seed=seed,
                                                                  architecture=model, lr=lr, wd=wd, heads=heads,
-                                                                 dropout=dropout,test_score=test_score)
+                                                                 dropout=dropout,test_score=test_score,
+                                                                 train_examples = train_examples, val_examples = val_examples)
             val_accs += val_acc
             test_accs += test_acc
             stoppeds += stopped
