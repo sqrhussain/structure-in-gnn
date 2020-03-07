@@ -2,14 +2,19 @@ import wget
 import tarfile
 import os
 import networkx as nx
+import scipy
+import shutil
+import zipfile
+import pandas as pd
+import csv
 
 
 
-def create_citation_dataset(dataset_name, url, target_tmp_file, dir_path, target_processed_path,
-                            threshold=50,raw_folder_name = None):  # to use for CORA and CITESEER
-    
+def create_citation_dataset(dataset_name, url, target_tmp_file, dir_path, target_processed_path, threshold=50, raw_folder_name = None):  # to use for CORA and CITESEER
+
     if raw_folder_name is None:
         raw_folder_name = dataset_name
+
     # download dataset
     if not os.path.exists(dir_path + '/' + dataset_name):
         print(f'Downloading {url}...')
@@ -27,9 +32,12 @@ def create_citation_dataset(dataset_name, url, target_tmp_file, dir_path, target
     features = {}
     class_count = {}
     nodes = set()
-    with open(features_path) as f:
+    with open(features_path, encoding='utf8') as f:
         for line in f:
-            info = line.split()
+            if dataset_name == 'hateful-users-on-twitter':
+                info = line.split('\t')
+            else:
+                info = line.split()
             if len(info) == 1:
                 info = line.split(',')
             nodes.add(info[0])
@@ -69,11 +77,15 @@ def create_citation_dataset(dataset_name, url, target_tmp_file, dir_path, target
         for edge in edges:
             f.write(' '.join(edge) + '\n')
 
-    with open(f'{target_processed_path}/{dataset_name}/{dataset_name}.content', 'w') as f:
+    with open(f'{target_processed_path}/{dataset_name}/{dataset_name}.content', 'w', encoding='utf8') as f:
         for node in nodes:
-            f.write(node + ' ')
-            f.write(' '.join(features[node]))
-            f.write(' ' + target[node] + '\n')
+            if dataset_name == 'hateful-users-on-twitter':
+                delimiter = '\t'
+            else:
+                delimiter = ' '
+            f.write(node + delimiter)
+            f.write(delimiter.join(features[node]))
+            f.write(delimiter + target[node] + '\n')
 
     print(f'Created {dataset_name}.cites and {dataset_name}.content')
 
@@ -155,7 +167,7 @@ def create_washington():
     dir_path = 'data/graphs/raw'
     target_processed = 'data/graphs/processed'
     create_citation_dataset(dataset_name, washington_url, target_raw, dir_path, target_processed, raw_folder_name = 'WebKB',threshold = 10)
-    
+
 def create_wisconsin():
     dataset_name = 'wisconsin'
     wisconsin_url = 'https://linqs-data.soe.ucsc.edu/public/lbc/WebKB.tgz'
@@ -163,13 +175,13 @@ def create_wisconsin():
     dir_path = 'data/graphs/raw'
     target_processed = 'data/graphs/processed'
     create_citation_dataset(dataset_name, wisconsin_url, target_raw, dir_path, target_processed, raw_folder_name = 'WebKB',threshold = 10)
-    
+
 def create_cornell():
     dataset_name = 'cornell'
     cornell_url = 'https://linqs-data.soe.ucsc.edu/public/lbc/WebKB.tgz'
-    target_raw = 'data/graphs/raw/WebKB.tgz'
-    dir_path = 'data/graphs/raw'
-    target_processed = 'data/graphs/processed'
+    target_raw = '../../data/graphs/raw/WebKB.tgz'
+    dir_path = '../../data/graphs/raw'
+    target_processed = '../../data/graphs/processed'
     create_citation_dataset(dataset_name, cornell_url, target_raw, dir_path, target_processed, raw_folder_name = 'WebKB',threshold = 10)
 
 def create_pubmed():
@@ -197,7 +209,34 @@ def create_pubmed():
                 f'{dir_path}/Pubmed-Diabetes/data/Pubmed-Diabetes.DIRECTED.cites.tab',
                 f'{target_processed}/{dataset_name}/{dataset_name}.cites')
 
+
+def create_twitter_hateful_users():
+    dataset_name = 'hateful-users-on-twitter'
+    # need to download the .zip file from https://www.kaggle.com/manoelribeiro/hateful-users-on-twitter and place it in
+    # 'data/graphs/raw/hateful-users-on-twitter.zip'
+    target_raw = 'data/graphs/raw/hateful-users-on-twitter.zip'
+    dir_path = 'data/graphs/raw'
+    target_processed = 'data/graphs/processed'
+    if not os.path.exists(dir_path + '/' + dataset_name):
+        os.mkdir(dir_path + '/' + dataset_name)
+    with zipfile.ZipFile(target_raw, 'r') as zip_ref:
+        zip_ref.extractall(dir_path + '/' + dataset_name)
+         # os.remove(target_raw)
+    os.rename(dir_path + '/' + dataset_name + '/' + 'users.edges', dir_path + '/' + dataset_name + '/' + dataset_name + '.cites')
+    df_users_neighborhood_anon = pd.read_csv(dir_path + '/' + dataset_name + '/users_neighborhood_anon.csv')
+    cols = df_users_neighborhood_anon.columns.tolist()
+    cols.append(cols.pop(cols.index('hate')))
+    df_users_neighborhood_anon = df_users_neighborhood_anon[cols]
+    for column in df_users_neighborhood_anon.columns:
+        df_users_neighborhood_anon[column] = df_users_neighborhood_anon[column].replace("\t", " ")
+    df_users_neighborhood_anon.to_csv(dir_path + '/' + dataset_name + '/' + dataset_name + '.content',
+                                      index=False, sep="\t", quoting=csv.QUOTE_NONE, header=False)
+    create_citation_dataset(dataset_name, None, None, dir_path, target_processed)
+
+
 if __name__ == '__main__':
-    create_cornell()
-    create_wisconsin()
-    create_washington()
+    #create_cornell()
+    #create_wisconsin()
+    #create_washington()
+    #create_texas()
+    create_twitter_hateful_users()

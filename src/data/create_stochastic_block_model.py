@@ -191,3 +191,20 @@ if __name__ == "__main__":
     create_multiple_sbm_graphs('data/graphs/processed/cora_full/cora_full.cites',
                                'data/community_id_dicts/cora_full/cora_full_louvain.pickle',
                                'data/graphs/sbm/cora_full/cora_full_sbm')
+
+    create_multiple_sbm_graphs('data/graphs/processed/cornell/cornell.cites',
+                               'data/community_id_dicts/cornell/cornell_louvain.pickle',
+                               'data/graphs/sbm/cornell/cornell_sbm')
+    create_multiple_sbm_graphs('data/graphs/processed/texas/texas.cites',
+                               'data/community_id_dicts/texas/texas_louvain.pickle',
+                               'data/graphs/sbm/texas/texas_sbm')
+    create_multiple_sbm_graphs('data/graphs/processed/washington/washington.cites',
+                               'data/community_id_dicts/washington/washington_louvain.pickle',
+                               'data/graphs/sbm/washington_sbm/washington_sbm')
+    create_multiple_sbm_graphs('data/graphs/processed/wisconsin/wisconsin.cites',
+                               'data/community_id_dicts/wisconsin/wisconsin_louvain.pickle',
+                               'data/graphs/sbm/wisconsin/wisconsin_sbm')
+
+    create_multiple_sbm_graphs('data/graphs/processed/hateful-users-on-twitter/hateful-users-on-twitter.cites',
+                               'data/community_id_dicts/hateful-users-on-twitter/hateful-users-on-twitter_louvain.pickle',
+                               'data/graphs/sbm/hateful-users-on-twitter/hateful-users-on-twitter_sbm')
