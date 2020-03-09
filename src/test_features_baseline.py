@@ -17,16 +17,18 @@ def report_test_acc_unsupervised_embedding(dataset):
     tests = tests + test
     return tests
 
-
 val_out = f'reports/results/test_acc/features-only-baseline.csv'
+
+print(f'reading {val_out}')
 if os.path.exists(val_out):
     test_acc = pd.read_csv(val_out)
 else:
     test_acc = pd.DataFrame(columns='method dataset test_acc test_avg test_std'.split())
-
-datasets = 'cora citeseer pubmed cora_full'.split()
+    
+datasets = 'cornell texas washington wisconsin twitter'.split()
 
 for dataset in datasets:
+    print(f'evaluating {dataset}')
     tests = report_test_acc_unsupervised_embedding(dataset=dataset)
     test_acc = test_acc.append({'method': 'features-only-baseline', 'dataset': dataset,
                                 'test_acc': tests, 'test_avg': np.mean(tests), 'test_std': np.std(tests)},

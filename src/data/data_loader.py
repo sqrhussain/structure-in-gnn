@@ -32,7 +32,7 @@ class GraphDataset(InMemoryDataset):
         return
 
     def process(self):
-        data = read_network(self.attributes_path,self.edge_path,self.directed,self.reverse)
+        data = read_network(self.attributes_path,self.edge_path,self.directed,self.reverse,convert_to_BoW=(self.name == 'pubmed'))
         torch.save(self.collate([data]), self.processed_paths[0])
 
     def __repr__(self):

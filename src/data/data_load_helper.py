@@ -7,7 +7,7 @@ import numpy as np
 from torch_geometric.data import Data
 import networkx as nx
 
-def read_network(features_path,edge_path,directed,reverse):
+def read_network(features_path,edge_path,directed,reverse, convert_to_BoW = False):
     if not directed:
         reverse = False
     feats = []
@@ -30,8 +30,10 @@ def read_network(features_path,edge_path,directed,reverse):
             target.append(class_rename[info[-1]])
             cnt += 1
     # TF-IDF to binary BoW
-    feats = (np.array(feats) > 0)
-
+    if convert_to_BoW:
+        feats = (np.array(feats) > 0)
+    else:
+        feats = np.array(feats)
     y = torch.tensor(target,dtype=torch.long)
     n = len(target)
 
@@ -39,7 +41,6 @@ def read_network(features_path,edge_path,directed,reverse):
     
     print('Read features: DONE')
     # 3. Split similar to Planetoid
-    
     num_classes = len(set(target))
     df = pd.DataFrame(target)
     df.columns = ['target']
@@ -143,3 +144,5 @@ def load_embedding(embFile,featFile = None):
     data = Data(x=x, y=y)
     
     return data
+
+

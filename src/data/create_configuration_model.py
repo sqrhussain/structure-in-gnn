@@ -21,7 +21,12 @@ def generate_multiple_conf_models(graph_path, output_prefix,output_suffix = '.ci
 
 
 if __name__ == '__main__':
-    generate_multiple_conf_models('data/graphs/processed/cora/cora.cites','data/graphs/confmodel/cora/cora_confmodel')
+    # generate_multiple_conf_models('data/graphs/processed/cora/cora.cites','data/graphs/confmodel/cora/cora_confmodel')
     # generate_multiple_conf_models('data/graphs/processed/citeseer/citeseer.cites','data/graphs/confmodel/citeseer/citeseer_confmodel')
     # generate_multiple_conf_models('data/graphs/processed/pubmed/pubmed.cites','data/graphs/confmodel/pubmed/pubmed_confmodel')
     # generate_multiple_conf_models('data/graphs/processed/cora_full/cora_full.cites','data/graphs/confmodel/cora_full/cora_full_confmodel')
+    generate_multiple_conf_models('data/graphs/processed/cornell/cornell.cites','data/graphs/confmodel/cornell/cornell_confmodel')
+    generate_multiple_conf_models('data/graphs/processed/texas/texas.cites','data/graphs/confmodel/texas/texas_confmodel')
+    generate_multiple_conf_models('data/graphs/processed/washington/washington.cites','data/graphs/confmodel/washington/washington_confmodel')
+    generate_multiple_conf_models('data/graphs/processed/wisconsin/wisconsin.cites','data/graphs/confmodel/wisconsin/wisconsin_confmodel')
+    generate_multiple_conf_models('data/graphs/processed/twitter/twitter.cites','data/graphs/confmodel/twitter/twitter_confmodel')

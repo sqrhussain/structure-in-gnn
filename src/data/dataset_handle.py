@@ -10,13 +10,14 @@ import csv
 
 
 
-def create_citation_dataset(dataset_name, url, target_tmp_file, dir_path, target_processed_path, threshold=50, raw_folder_name = None):  # to use for CORA and CITESEER
+def create_citation_dataset(dataset_name, url, target_tmp_file, dir_path, target_processed_path,
+                            threshold=50, raw_folder_name = None, select_largest_component = True):  # to use for CORA and CITESEER
 
     if raw_folder_name is None:
         raw_folder_name = dataset_name
 
     # download dataset
-    if not os.path.exists(dir_path + '/' + dataset_name):
+    if (url is not None) and (not os.path.exists(dir_path + '/' + dataset_name)):
         print(f'Downloading {url}...')
         wget.download(url, target_tmp_file)
         tar = tarfile.open(target_tmp_file, "r:gz")
@@ -34,7 +35,7 @@ def create_citation_dataset(dataset_name, url, target_tmp_file, dir_path, target
     nodes = set()
     with open(features_path, encoding='utf8') as f:
         for line in f:
-            if dataset_name == 'hateful-users-on-twitter':
+            if dataset_name == 'twitter':
                 info = line.split('\t')
             else:
                 info = line.split()
@@ -67,9 +68,9 @@ def create_citation_dataset(dataset_name, url, target_tmp_file, dir_path, target
     # select biggest connected component
     undirected_graph = nx.Graph()  # undirected, just to find the biggest connected component
     undirected_graph.add_edges_from(edges)
-    largest_component = max(nx.connected_components(undirected_graph), key=len)
-
-    nodes = largest_component
+    if select_largest_component:
+        largest_component = max(nx.connected_components(undirected_graph), key=len)
+        nodes = largest_component
     if not os.path.exists(f'{target_processed_path}/{dataset_name}'):
         os.mkdir(f'{target_processed_path}/{dataset_name}')
     edges = [e for e in edges if e[0] in nodes and e[1] in nodes]
@@ -79,10 +80,10 @@ def create_citation_dataset(dataset_name, url, target_tmp_file, dir_path, target
 
     with open(f'{target_processed_path}/{dataset_name}/{dataset_name}.content', 'w', encoding='utf8') as f:
         for node in nodes:
-            if dataset_name == 'hateful-users-on-twitter':
-                delimiter = '\t'
-            else:
-                delimiter = ' '
+            # if dataset_name == 'twitter':
+            #     delimiter = '\t'
+            # else:
+            delimiter = ' '
             f.write(node + delimiter)
             f.write(delimiter.join(features[node]))
             f.write(delimiter + target[node] + '\n')
@@ -158,7 +159,7 @@ def create_texas():
     target_raw = 'data/graphs/raw/WebKB.tgz'
     dir_path = 'data/graphs/raw'
     target_processed = 'data/graphs/processed'
-    create_citation_dataset(dataset_name, texas_url, target_raw, dir_path, target_processed, raw_folder_name = 'WebKB',threshold = 10)
+    create_citation_dataset(dataset_name, texas_url, target_raw, dir_path, target_processed, raw_folder_name = 'WebKB',threshold = 16)
 
 def create_washington():
     dataset_name = 'washington'
@@ -166,7 +167,7 @@ def create_washington():
     target_raw = 'data/graphs/raw/WebKB.tgz'
     dir_path = 'data/graphs/raw'
     target_processed = 'data/graphs/processed'
-    create_citation_dataset(dataset_name, washington_url, target_raw, dir_path, target_processed, raw_folder_name = 'WebKB',threshold = 10)
+    create_citation_dataset(dataset_name, washington_url, target_raw, dir_path, target_processed, raw_folder_name = 'WebKB',threshold = 16)
 
 def create_wisconsin():
     dataset_name = 'wisconsin'
@@ -182,7 +183,7 @@ def create_cornell():
     target_raw = '../../data/graphs/raw/WebKB.tgz'
     dir_path = '../../data/graphs/raw'
     target_processed = '../../data/graphs/processed'
-    create_citation_dataset(dataset_name, cornell_url, target_raw, dir_path, target_processed, raw_folder_name = 'WebKB',threshold = 10)
+    create_citation_dataset(dataset_name, cornell_url, target_raw, dir_path, target_processed, raw_folder_name = 'WebKB',threshold = 16)
 
 def create_pubmed():
     dataset_name = 'pubmed'
@@ -210,8 +211,8 @@ def create_pubmed():
                 f'{target_processed}/{dataset_name}/{dataset_name}.cites')
 
 
-def create_twitter_hateful_users():
-    dataset_name = 'hateful-users-on-twitter'
+def create_twitter():
+    dataset_name = 'twitter'
     # need to download the .zip file from https://www.kaggle.com/manoelribeiro/hateful-users-on-twitter and place it in
     # 'data/graphs/raw/hateful-users-on-twitter.zip'
     target_raw = 'data/graphs/raw/hateful-users-on-twitter.zip'
@@ -224,19 +225,48 @@ def create_twitter_hateful_users():
          # os.remove(target_raw)
     os.rename(dir_path + '/' + dataset_name + '/' + 'users.edges', dir_path + '/' + dataset_name + '/' + dataset_name + '.cites')
     df_users_neighborhood_anon = pd.read_csv(dir_path + '/' + dataset_name + '/users_neighborhood_anon.csv')
+    print('loaded users_neighborhood_anon.csv')
+    df_users_neighborhood_anon = df_users_neighborhood_anon[df_users_neighborhood_anon.hate != 'other']
+    print('filtered annotated')
     cols = df_users_neighborhood_anon.columns.tolist()
+    with open('data/graphs/raw/twitter_columns', 'r') as f:
+        cols = [x[:-1] for x in f.readlines()]
+    df_users_neighborhood_anon = df_users_neighborhood_anon.dropna()
+    print(df_users_neighborhood_anon.shape)
     cols.append(cols.pop(cols.index('hate')))
-    df_users_neighborhood_anon = df_users_neighborhood_anon[cols]
+    df_users_neighborhood_anon = df_users_neighborhood_anon[cols] * 1 # *1 to convert boolean to float
+    print(f'filtered features, shape = {df_users_neighborhood_anon.shape}')
+
     for column in df_users_neighborhood_anon.columns:
         df_users_neighborhood_anon[column] = df_users_neighborhood_anon[column].replace("\t", " ")
     df_users_neighborhood_anon.to_csv(dir_path + '/' + dataset_name + '/' + dataset_name + '.content',
                                       index=False, sep="\t", quoting=csv.QUOTE_NONE, header=False)
     create_citation_dataset(dataset_name, None, None, dir_path, target_processed)
 
+def merge_networks(directory, datasets, output_prefix):
+    filenames = [f'{directory}/{x}.cites' for x in datasets]
+    with open(f'{output_prefix}.cites', 'w') as outfile:
+        for fname in filenames:
+            with open(fname) as infile:
+                for line in infile:
+                    outfile.write(line)
+    filenames = [f'{directory}/{x}.content' for x in datasets]
+    with open(f'{output_prefix}.content', 'w') as outfile:
+        for fname in filenames:
+            with open(fname) as infile:
+                for line in infile:
+                    outfile.write(line)
+
+def create_webkb():
+    merge_networks('data/graphs/raw/WebKB', 'texas cornell washington wisconsin'.split(),'data/graphs/interim/webkb/webkb') 
+    create_citation_dataset('webkb', None, None, dir_path = 'data/graphs/interim',
+                            target_processed_path = 'data/graphs/processed',
+                            raw_folder_name = 'webkb', threshold=25,select_largest_component=False)
 
 if __name__ == '__main__':
+    create_webkb()
     #create_cornell()
     #create_wisconsin()
     #create_washington()
     #create_texas()
-    create_twitter_hateful_users()
+    # create_twitter()
