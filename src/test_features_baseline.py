@@ -12,7 +12,7 @@ def report_test_acc_unsupervised_embedding(dataset):
     emb = FeatureOnlyData(f'data/tmp/{dataset.capitalize()}FeatsOnly', dataset,
                           f'data/graphs/processed/{dataset}/{dataset}.content')
     print(f'started test {dataset}')
-    test = test_method(emb, num_splits=num_splits)
+    test = test_method(emb, num_splits=num_splits, train_examples = train_count(dataset), val_examples = val_count(dataset))
     print(str(test) + '\n')
     tests = tests + test
     return tests
@@ -25,7 +25,17 @@ if os.path.exists(val_out):
 else:
     test_acc = pd.DataFrame(columns='method dataset test_acc test_avg test_std'.split())
     
-datasets = 'cornell texas washington wisconsin twitter'.split()
+datasets = 'webkb'.split()
+
+def train_count(dataset):
+    if dataset == 'webkb':
+        return 10
+    return 20
+def val_count(dataset):
+    if dataset == 'webkb':
+        return 15
+    return 30
+
 
 for dataset in datasets:
     print(f'evaluating {dataset}')

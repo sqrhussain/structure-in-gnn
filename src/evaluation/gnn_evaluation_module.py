@@ -10,6 +10,7 @@ import random
 import warnings
 import pandas as pd
 from src.evaluation.network_split import NetworkSplitShchur
+from sklearn.metrics import f1_score
 
 
 def train_gnn(dataset, channels, modelType, architecture,
@@ -39,6 +40,7 @@ def train_gnn(dataset, channels, modelType, architecture,
     maxacc = -1
     chosen = None
     accs = []
+    # f1s = []
     stopped_at = epochs
     for epoch in range(epochs):
         optimizer.zero_grad()  # saw this a lot in the beginning, maybe resetting gradients (not to accumulate)
@@ -51,7 +53,9 @@ def train_gnn(dataset, channels, modelType, architecture,
         _, pred = model(data).max(dim=1)  # take prediction out of softmax
         correct = float(pred[split.val_mask].eq(data.y[split.val_mask]).sum().item())
         acc = correct / float(split.val_mask.sum().item())
+        # f1 = f1_score(data.y[split.val_mask].detach().cpu().numpy(),pred[split.val_mask].detach().cpu().numpy(),average='micro')
         accs.append(acc)
+        # f1s.append(f1)
         if acc > maxacc:
             maxacc = acc
             chosen = copy.deepcopy(model)
@@ -63,9 +67,11 @@ def train_gnn(dataset, channels, modelType, architecture,
     _, pred = chosen(data).max(dim=1)  # take prediction out of softmax
     correct = float(pred[split.val_mask].eq(data.y[split.val_mask]).sum().item())
     val_acc = correct / float(split.val_mask.sum().item())
+    # val_f1 = f1_score(data.y[split.val_mask].detach().cpu().numpy(),pred[split.val_mask].detach().cpu().numpy(),average='micro')
     if test_score:
         correct = float(pred[split.test_mask].eq(data.y[split.test_mask]).sum().item())
         test_acc = correct / float(split.test_mask.sum().item())
+        # test_f1 = f1_score(data.y[split.test_mask].detach().cpu().numpy(),pred[split.test_mask].detach().cpu().numpy(),average='micro')
         return val_acc, stopped_at, test_acc
     return val_acc, stopped_at, []
 

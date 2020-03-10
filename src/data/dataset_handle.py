@@ -41,7 +41,7 @@ def create_citation_dataset(dataset_name, url, target_tmp_file, dir_path, target
                 info = line.split()
             if len(info) == 1:
                 info = line.split(',')
-            nodes.add(info[0])
+            # nodes.add(info[0])
             y = info[-1]
             target[info[0]] = y
             features[info[0]] = info[1:-1]
@@ -50,9 +50,6 @@ def create_citation_dataset(dataset_name, url, target_tmp_file, dir_path, target
                 class_count[y] += 1
             else:
                 class_count[y] = 1
-
-    # remove nodes with rare labels
-    nodes = {u for u in nodes if class_count[target[u]] >= threshold}
 
     edges = []
     with open(edges_path) as f:
@@ -68,6 +65,8 @@ def create_citation_dataset(dataset_name, url, target_tmp_file, dir_path, target
     # select biggest connected component
     undirected_graph = nx.Graph()  # undirected, just to find the biggest connected component
     undirected_graph.add_edges_from(edges)
+    # remove nodes with rare labels
+    nodes = {u for u in undirected_graph.nodes() if class_count[target[u]] >= threshold}
     if select_largest_component:
         largest_component = max(nx.connected_components(undirected_graph), key=len)
         nodes = largest_component
@@ -80,9 +79,6 @@ def create_citation_dataset(dataset_name, url, target_tmp_file, dir_path, target
 
     with open(f'{target_processed_path}/{dataset_name}/{dataset_name}.content', 'w', encoding='utf8') as f:
         for node in nodes:
-            # if dataset_name == 'twitter':
-            #     delimiter = '\t'
-            # else:
             delimiter = ' '
             f.write(node + delimiter)
             f.write(delimiter.join(features[node]))
