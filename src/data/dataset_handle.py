@@ -7,11 +7,11 @@ import shutil
 import zipfile
 import pandas as pd
 import csv
-
+import numpy as np
 
 
 def create_citation_dataset(dataset_name, url, target_tmp_file, dir_path, target_processed_path,
-                            threshold=50, raw_folder_name = None, select_largest_component = True):  # to use for CORA and CITESEER
+                            threshold=50, raw_folder_name = None, select_largest_component = True, sample_features = None):  # to use for CORA and CITESEER
 
     if raw_folder_name is None:
         raw_folder_name = dataset_name
@@ -41,16 +41,20 @@ def create_citation_dataset(dataset_name, url, target_tmp_file, dir_path, target
                 info = line.split()
             if len(info) == 1:
                 info = line.split(',')
-            # nodes.add(info[0])
+            nodes.add(info[0])
             y = info[-1]
             target[info[0]] = y
-            features[info[0]] = info[1:-1]
-
+            fs = info[1:-1]
+            # features[info[0]] = info[1:-1]
+            if sample_features is not None:
+                np.random.seed(0)
+                fs = np.random.choice(np.array(fs), sample_features, replace=False)
+                fs = fs.tolist()
+            features[info[0]] = fs
             if y in class_count:
                 class_count[y] += 1
             else:
                 class_count[y] = 1
-
     edges = []
     with open(edges_path) as f:
         for line in f:
@@ -61,7 +65,7 @@ def create_citation_dataset(dataset_name, url, target_tmp_file, dir_path, target
             if info[0] in nodes and info[1] in nodes and info[0] != info[1]:
                 # convert to suitable representation (citing -> cited)
                 edges.append([info[1], info[0]])
-
+    # print(edges_path)
     # select biggest connected component
     undirected_graph = nx.Graph()  # undirected, just to find the biggest connected component
     undirected_graph.add_edges_from(edges)
@@ -84,7 +88,7 @@ def create_citation_dataset(dataset_name, url, target_tmp_file, dir_path, target
             f.write(delimiter.join(features[node]))
             f.write(delimiter + target[node] + '\n')
 
-    print(f'Created {dataset_name}.cites and {dataset_name}.content')
+    print(f'Created {target_processed_path}/{dataset_name}/{dataset_name}.cites and {target_processed_path}/{dataset_name}/{dataset_name}.content')
 
 
 def transform_pubmed(inFeat, outFeat, inNet, outNet):
@@ -259,8 +263,14 @@ def create_webkb():
                             target_processed_path = 'data/graphs/processed',
                             raw_folder_name = 'webkb', threshold=25,select_largest_component=False)
 
+def create_webkb_small():
+    merge_networks('data/graphs/raw/WebKB', 'texas cornell washington wisconsin'.split(),'data/graphs/interim/webkb_small/webkb_small') 
+    create_citation_dataset('webkb_small', None, None, dir_path = 'data/graphs/interim',
+                            target_processed_path = 'data/graphs/processed',
+                            raw_folder_name = 'webkb_small', threshold=25,select_largest_component=False, sample_features=50)
+
 if __name__ == '__main__':
-    create_webkb()
+    create_webkb_small()
     #create_cornell()
     #create_wisconsin()
     #create_washington()

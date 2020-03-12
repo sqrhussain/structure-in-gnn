@@ -74,19 +74,19 @@ def eval_archs_gat(dataset, channel_size, dropout, lr, wd, heads, models=[MonoGA
     if isDirected:
         models = [MonoGAT]
     return eval_gnn(dataset, GATConv, channel_size, dropout, lr, wd, heads=heads,
-                      models=models, num_runs=args.runs, num_splits=args.splits, test_score=True,
+                      models=models, num_runs=args.runs, num_splits=args.splits,
                       train_examples = args.train_examples, val_examples = args.val_examples)
 def contains(df_val,ch,lr,dropout,wd):
     return ((df_val['ch']==ch) & (df_val['lr']==lr) & (df_val['dropout']==dropout) & (df_val['wd']==wd)).any()
 def contains_gat(df_val,ch,lr,dropout,wd,heads):
     return ((df_val['ch']==ch) & (df_val['lr']==lr) & (df_val['dropout']==dropout)  & (df_val['wd']==wd) & (df_val['heads']==heads)).any()
 
-for ch in [12,24,48,96]:
-    for lr in [1e-3,5e-3,1e-2]:
-        for dropout in [0.2,0.4,0.6,0.8]:
-            for wd in [1e-4,1e-3,1e-2,1e-1]:
+for ch in [96]:
+    for lr in [1e2,5e-2,1e-1]:
+        for dropout in [0.2]:
+            for wd in [1e-2,1e-1,5e-1,1]:
                 if args.model == 'gat':
-                    for heads in [1,2,4,8]:
+                    for heads in [1,2,4]:
                         if contains_gat(df_val,ch,lr,dropout,wd,heads):
                             print('already calculated!')
                             continue

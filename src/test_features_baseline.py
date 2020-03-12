@@ -28,11 +28,11 @@ else:
 datasets = 'webkb'.split()
 
 def train_count(dataset):
-    if dataset == 'webkb':
+    if 'webkb' in dataset:
         return 10
     return 20
 def val_count(dataset):
-    if dataset == 'webkb':
+    if 'webkb' in dataset:
         return 15
     return 30
 

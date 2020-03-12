@@ -205,6 +205,10 @@ if __name__ == "__main__":
     #                            'data/community_id_dicts/wisconsin/wisconsin_louvain.pickle',
     #                            'data/graphs/sbm/wisconsin/wisconsin_sbm')
 
-    create_multiple_sbm_graphs('data/graphs/processed/twitter/twitter.cites',
-                               'data/community_id_dicts/twitter/twitter_louvain.pickle',
-                               'data/graphs/sbm/twitter/twitter_sbm')
+    # create_multiple_sbm_graphs('data/graphs/processed/twitter/twitter.cites',
+    #                            'data/community_id_dicts/twitter/twitter_louvain.pickle',
+    #                            'data/graphs/sbm/twitter/twitter_sbm')
+
+    create_multiple_sbm_graphs('data/graphs/processed/webkb/webkb.cites',
+                               'data/community_id_dicts/webkb/webkb_louvain.pickle',
+                               'data/graphs/sbm/webkb/webkb_sbm')

@@ -77,9 +77,9 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+name2conv = {'gcn': GCNConv, 'sage': SAGEConv, 'gat': GATConv, 'rgcn': RGCNConv}
 
-
-def eval_archs_gat(dataset, channel_size, dropout, lr, wd, heads,runs,splits,train_examples,val_examples, models=[MonoGAT, BiGAT, TriGAT]):
+def eval_archs_gat(dataset, channel_size, dropout, lr, wd, heads,runs,splits,train_examples,val_examples, models=[MonoGAT, BiGAT, TriGAT],isDirected = False):
     if isDirected:
         models = [MonoGAT]
     return eval_gnn(dataset, GATConv, channel_size, dropout, lr, wd, heads=heads,
@@ -87,7 +87,7 @@ def eval_archs_gat(dataset, channel_size, dropout, lr, wd, heads,runs,splits,tra
                       train_examples = train_examples, val_examples = val_examples)
 
 
-def eval_archs_gcn(dataset, conv, channel_size, dropout, lr, wd, runs,splits,train_examples,val_examples, models=[MonoModel, BiModel, TriModel]):
+def eval_archs_gcn(dataset, conv, channel_size, dropout, lr, wd, runs,splits,train_examples,val_examples, models=[MonoModel, BiModel, TriModel], isDirected=False):
     if isDirected:
         models = [MonoModel]
     return eval_gnn(dataset, conv, channel_size, dropout, lr, wd, heads=1,
@@ -103,13 +103,13 @@ def eval_archs_rgcn(dataset, channel_size, dropout, lr, wd, runs,splits,train_ex
 
 
 
-def eval(model, dataset, channel_size, dropout, lr, wd, heads, train_examples, val_examples):
+def eval(model, dataset, channel_size, dropout, lr, wd, heads, runs, splits, train_examples, val_examples, isDirected):
     if model == 'gat':
-        return eval_archs_gat(dataset, channel_size, dropout, lr, wd, heads,train_examples = train_examples, val_examples = val_examples)
+        return eval_archs_gat(dataset, channel_size, dropout, lr, wd, heads, splits=splits, runs=runs, train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
     elif model == 'rgcn':
-        return eval_archs_rgcn(dataset, channel_size, dropout, lr, wd,train_examples = train_examples, val_examples = val_examples)
+        return eval_archs_rgcn(dataset, channel_size, dropout, lr, wd, splits=splits, runs=runs, train_examples = train_examples, val_examples = val_examples)
     else:
-        return eval_archs_gcn(dataset, name2conv[model], channel_size, dropout, lr, wd, train_examples = train_examples, val_examples = val_examples)
+        return eval_archs_gcn(dataset, name2conv[model], channel_size, dropout, lr, wd, splits=splits, runs=runs, train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
 
 def eval_original(model, dataset, directionality, size, dropout, lr, wd, heads,
         splits, runs, train_examples, val_examples):
@@ -119,8 +119,8 @@ def eval_original(model, dataset, directionality, size, dropout, lr, wd, heads,
                            f'data/graphs/processed/{dataset}/{dataset}.cites',
                            f'data/graphs/processed/{dataset}/{dataset}.content',
                            directed=isDirected, reverse=isReversed)
-    df_cur = eval(dataset=dataset, channel_size=size, lr=lr,
-                  dropout=dropout, wd=wd, heads=heads)
+    df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr, splits=splits, runs=runs,
+                  dropout=dropout, wd=wd, heads=heads,train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
     return df_cur
 
 def eval_conf(model, dataset, directionality, size, dropout, lr, wd, heads,
@@ -133,9 +133,9 @@ def eval_conf(model, dataset, directionality, size, dropout, lr, wd, heads,
                                f'data/graphs/confmodel/{dataset}/{dataset}_confmodel_{i}.cites',
                                f'data/graphs/processed/{dataset}/{dataset}.content',
                                directed=isDirected, reverse=isReversed)
-        df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr,
+        df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr, splits=splits, runs=runs,
                       dropout=dropout, wd=wd, heads=heads,
-                      train_examples = train_examples, val_examples = val_examples)
+                      train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
         df_cur['confmodel_num'] = i
         df = pd.concat([df, df_cur])
         df.to_csv(val_out, index=False)
@@ -151,9 +151,9 @@ def eval_sbm(model, dataset, directionality, size, dropout, lr, wd, heads,
                                f'data/graphs/sbm/{dataset}/{dataset}_sbm_{i}.cites',
                                f'data/graphs/processed/{dataset}/{dataset}.content',
                                directed=isDirected, reverse=isReversed)
-        df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr,
+        df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr, splits=splits, runs=runs,
                       dropout=dropout, wd=wd, heads=heads,
-                      train_examples = train_examples, val_examples = val_examples)
+                      train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
         df_cur['sbm_num'] = i
         df_val = pd.concat([df_val, df_cur])
     return df_val
@@ -167,7 +167,7 @@ if __name__ == '__main__':
     isDirected = (args.directionality != 'undirected')
     isReversed = (args.directionality == 'reversed')
 
-    name2conv = {'gcn': GCNConv, 'sage': SAGEConv, 'gat': GATConv, 'rgcn': RGCNConv}
+    
 
     # TODO find a better way to create names
     val_out = f'reports/results/test_acc/{args.model}_{args.dataset}{"_conf" if args.conf else ""}' \
