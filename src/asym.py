@@ -1,6 +1,7 @@
 from src.apply_gnn_to_datasets import eval_archs_gcn
 from torch_geometric.nn import GCNConv
 import pandas as pd
+import os
 
 
 def model_selection(model, dataset):
