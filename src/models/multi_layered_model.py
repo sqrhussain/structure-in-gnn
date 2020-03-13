@@ -132,3 +132,27 @@ class TriModel(torch.nn.Module):
         x = F.log_softmax(x, dim=1)
 
         return x
+
+
+class pASYM(TriModel):
+    def __init__(self, convType, dataset, channels, dropout=0.8):
+        super(pASYM, self).__init__(convType, dataset, channels, dropout)
+
+
+    def forward(self, data):
+        x, edge_index = data.x, data.edge_index
+        st_edges = data.edge_index.t()[1 - data.is_reversed].t()
+        ts_edges = data.edge_index.t()[data.is_reversed].t()
+        #         print(ts_edges.shape)
+        for i in range(len(self.conv_st)):
+            x1 = self.conv_st[i](x, st_edges)
+            x2 = self.conv_ts[i](x, ts_edges)
+            x3 = self.conv[i](x, edge_index)
+            x = F.relu(torch.cat((x1, x2, x3), dim=1))
+            x = F.dropout(x, training=self.training, p=self.dropout)
+
+        # last layer
+        x = self.last(x, edge_index)
+        x = F.log_softmax(x, dim=1)
+
+        return x

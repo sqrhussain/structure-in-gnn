@@ -82,8 +82,8 @@ def contains_gat(df_val,ch,lr,dropout,wd,heads):
     return ((df_val['ch']==ch) & (df_val['lr']==lr) & (df_val['dropout']==dropout)  & (df_val['wd']==wd) & (df_val['heads']==heads)).any()
 
 for ch in [96]:
-    for lr in [1e2,5e-2,1e-1]:
-        for dropout in [0.2]:
+    for lr in [1e-2,5e-2,1e-1]:
+        for dropout in [0.2,0.4,0.6,0.8]:
             for wd in [1e-2,1e-1,5e-1,1]:
                 if args.model == 'gat':
                     for heads in [1,2,4]:

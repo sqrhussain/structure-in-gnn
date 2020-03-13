@@ -1,8 +1,11 @@
-from src.apply_gnn_to_datasets import eval_archs_gcn
-from torch_geometric.nn import GCNConv
+from src.apply_gnn_to_datasets import eval_archs_gcn,eval_archs_gat
+from torch_geometric.nn import GCNConv,SAGEConv
 import pandas as pd
 import os
-
+from src.data.data_loader import GraphDataset
+from src.models.multi_layered_model import ASYM,pASYM,MonoModel
+import warnings
+warnings.filterwarnings("ignore")
 
 def model_selection(model, dataset):
     if dataset == 'cora_full':
@@ -20,13 +23,21 @@ def extract_hyperparams(df_hyper, dataset, model):
     df_hyper = df_hyper[(df_hyper.dataset == dataset) & (df_hyper.conv == model)].reset_index().loc[0]
     return int(df_hyper.ch), df_hyper.dropout, df_hyper.lr, df_hyper.wd, int(df_hyper.heads)
 
-dataset = 'cora'
+dataset = 'pubmed'
 model = 'gcn'
+directionality = 'undirected'
+isDirected = (directionality!='undirected')
+isReversed = (directionality=='reversed')
 
 df_hyper = pd.DataFrame()
 df_hyper = df_hyper.append(model_selection(model,dataset))
 size, dropout, lr, wd, heads = extract_hyperparams(df_hyper,dataset,model)
 
-res = eval_archs_gcn(dataset, GCNConv, size, dropout, lr, wd, splits=10, runs=5)
+data = GraphDataset(f'data/tmp/{dataset}{("_" + directionality) if isDirected else ""}', dataset,
+                       f'data/graphs/processed/{dataset}/{dataset}.cites',
+                       f'data/graphs/processed/{dataset}/{dataset}.content',
+                       directed=isDirected, reverse=isReversed)
+res = eval_archs_gcn(data, SAGEConv, size, dropout, lr, wd, splits=100, runs=20, train_examples=20, val_examples=30,models=[ASYM,pASYM])
+# res = eval_archs_gat(data, size, dropout, lr, wd, heads, splits=100, runs=20, train_examples=20, val_examples=30,models=[ASYM,pASYM])
 
-print(res)
+res.to_csv(f'reports/results/test_acc/asym_{model}_{dataset}.csv')

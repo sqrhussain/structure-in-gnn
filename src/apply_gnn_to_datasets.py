@@ -40,7 +40,7 @@ def parse_args():
                         default=4,
                         help='Attention heads. Default is 4.')
     parser.add_argument('--dataset',
-                        default="pubmed",
+                        default="cora",
                         help='Dataset name. Default is cora.')
     parser.add_argument('--model',
                         default="gcn",
@@ -111,45 +111,45 @@ def eval(model, dataset, channel_size, dropout, lr, wd, heads, runs, splits, tra
     else:
         return eval_archs_gcn(dataset, name2conv[model], channel_size, dropout, lr, wd, splits=splits, runs=runs, train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
 
-def eval_original(model, dataset, directionality, size, dropout, lr, wd, heads,
+def eval_original(model, dataset_name, directionality, size, dropout, lr, wd, heads,
         splits, runs, train_examples, val_examples):
     isDirected = (directionality != 'undirected')
     isReversed = (directionality == 'reversed')
-    dataset = GraphDataset(f'data/tmp/{dataset}{("_" + directionality) if isDirected else ""}', dataset,
-                           f'data/graphs/processed/{dataset}/{dataset}.cites',
-                           f'data/graphs/processed/{dataset}/{dataset}.content',
+    dataset = GraphDataset(f'data/tmp/{dataset_name}{("_" + directionality) if isDirected else ""}', dataset_name,
+                           f'data/graphs/processed/{dataset_name}/{dataset_name}.cites',
+                           f'data/graphs/processed/{dataset_name}/{dataset_name}.content',
                            directed=isDirected, reverse=isReversed)
     df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr, splits=splits, runs=runs,
                   dropout=dropout, wd=wd, heads=heads,train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
     return df_cur
 
-def eval_conf(model, dataset, directionality, size, dropout, lr, wd, heads,
+def eval_conf(model, dataset_name, directionality, size, dropout, lr, wd, heads,
         splits, runs, train_examples, val_examples, conf_inits):
     isDirected = (directionality != 'undirected')
     isReversed = (directionality == 'reversed')
     df_val = pd.DataFrame()
     for i in range(conf_inits):
-        dataset = GraphDataset(f'data/tmp/{dataset}{("_" + directionality) if isDirected else ""}-confmodel{i}', dataset,
-                               f'data/graphs/confmodel/{dataset}/{dataset}_confmodel_{i}.cites',
-                               f'data/graphs/processed/{dataset}/{dataset}.content',
+        dataset = GraphDataset(f'data/tmp/{dataset_name}{("_" + directionality) if isDirected else ""}-confmodel{i}', dataset_name,
+                               f'data/graphs/confmodel/{dataset_name}/{dataset_name}_confmodel_{i}.cites',
+                               f'data/graphs/processed/{dataset_name}/{dataset_name}.content',
                                directed=isDirected, reverse=isReversed)
         df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr, splits=splits, runs=runs,
                       dropout=dropout, wd=wd, heads=heads,
                       train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
         df_cur['confmodel_num'] = i
-        df = pd.concat([df, df_cur])
-        df.to_csv(val_out, index=False)
+        df_val = pd.concat([df_val, df_cur])
     return df_val
 
-def eval_sbm(model, dataset, directionality, size, dropout, lr, wd, heads,
+def eval_sbm(model, dataset_name, directionality, size, dropout, lr, wd, heads,
         splits, runs, train_examples, val_examples, sbm_inits):
     isDirected = (directionality != 'undirected')
     isReversed = (directionality == 'reversed')
     df_val = pd.DataFrame()
     for i in range(sbm_inits):
-        dataset = GraphDataset(f'data/tmp/{dataset}{("_" + directionality) if isDirected else ""}-sbm{i}', dataset,
-                               f'data/graphs/sbm/{dataset}/{dataset}_sbm_{i}.cites',
-                               f'data/graphs/processed/{dataset}/{dataset}.content',
+        print(f'data/graphs/processed/{dataset_name}/{dataset_name}.content')
+        dataset = GraphDataset(f'data/tmp/{dataset_name}{("_" + directionality) if isDirected else ""}-sbm{i}', dataset_name,
+                               f'data/graphs/sbm/{dataset_name}/{dataset_name}_sbm_{i}.cites',
+                               f'data/graphs/processed/{dataset_name}/{dataset_name}.content',
                                directed=isDirected, reverse=isReversed)
         df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr, splits=splits, runs=runs,
                       dropout=dropout, wd=wd, heads=heads,

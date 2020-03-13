@@ -72,6 +72,7 @@ if __name__ == '__main__':
     for directionality in ['undirected', 'directed', 'reversed']:
         for model in args.models:
             for dataset in args.datasets:
+                print(f'{dataset}, {model}, {directionality}')
                 val_out = f'reports/results/test_acc/{model}_{dataset}{"_conf" if args.conf else ""}' \
                           f'{"_sbm" if args.sbm else ""}{("_" + directionality) if (directionality!="undirected") else ""}.csv'
                 if os.path.exists(val_out):
