@@ -47,6 +47,8 @@ def parse_args():
 def model_selection(model, dataset):
     if dataset == 'cora_full':
         dataset = 'pubmed' # take pubmed hyperparams and apply them to cora_full
+    # if dataset == 'citeseer':
+    #     dataset = 'cora' # take cora hyperparams and apply them to citeseer
     filename = f'reports/results/eval/{model}_val_{dataset}_undirected.csv'
     if not os.path.exists(filename):
         filename = f'reports/results/eval/{model}.csv'
@@ -58,7 +60,10 @@ def model_selection(model, dataset):
 
 def extract_hyperparams(df_hyper, dataset, model):
     df_hyper = df_hyper[(df_hyper.dataset == dataset) & (df_hyper.conv == model)].reset_index().loc[0]
-    return int(df_hyper.ch), df_hyper.dropout, df_hyper.lr, df_hyper.wd, int(df_hyper.heads)
+    attdrop = 0.3
+    if 'attention_dropout' in df_hyper:
+        attdrop = df_hyper.attention_dropout
+    return int(df_hyper.ch), df_hyper.dropout, df_hyper.lr, df_hyper.wd, int(df_hyper.heads), attdrop
 
 if __name__ == '__main__':
     args = parse_args()
@@ -79,17 +84,17 @@ if __name__ == '__main__':
                     df_val = pd.read_csv(val_out)
                 else:
                     df_val = pd.DataFrame(
-                        columns='conv arch ch dropout lr wd heads splits inits val_accs val_avg val_std'
+                        columns='conv arch ch dropout lr wd heads attention_dropout splits inits val_accs val_avg val_std'
                                 ' test_accs test_avg test_std stopped elapsed'.split())
-                size, dropout, lr, wd, heads = extract_hyperparams(df_hyper,dataset,model)
+                size, dropout, lr, wd, heads, attention_dropout = extract_hyperparams(df_hyper,dataset,model)
                 if args.sbm:
-                    df_cur = eval_sbm(model, dataset, directionality, size, dropout, lr, wd, heads, args.splits, args.runs,
+                    df_cur = eval_sbm(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
                              args.train_examples, args.val_examples, 10)
                 elif args.conf:
-                    df_cur = eval_conf(model, dataset, directionality, size, dropout, lr, wd, heads, args.splits, args.runs,
+                    df_cur = eval_conf(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
                              args.train_examples, args.val_examples, 10)
                 else:
-                    df_cur = eval_original(model, dataset, directionality, size, dropout, lr, wd, heads, args.splits, args.runs,
+                    df_cur = eval_original(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
                              args.train_examples, args.val_examples)
                 df_val = pd.concat([df_val,df_cur])
                 df_val.to_csv(val_out, index=False)

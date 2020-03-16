@@ -39,6 +39,10 @@ def parse_args():
                         type=int,
                         default=4,
                         help='Attention heads. Default is 4.')
+    parser.add_argument('--attention_dropout',
+                        type=float,
+                        default=0.4,
+                        help='Attention dropout for GAT. Default is 0.4.')
     parser.add_argument('--dataset',
                         default="cora",
                         help='Dataset name. Default is cora.')
@@ -79,10 +83,10 @@ def parse_args():
 
 name2conv = {'gcn': GCNConv, 'sage': SAGEConv, 'gat': GATConv, 'rgcn': RGCNConv}
 
-def eval_archs_gat(dataset, channel_size, dropout, lr, wd, heads,runs,splits,train_examples,val_examples, models=[MonoGAT, BiGAT, TriGAT],isDirected = False):
+def eval_archs_gat(dataset, channel_size, dropout, lr, wd, heads,attention_dropout,runs,splits,train_examples,val_examples, models=[MonoGAT, BiGAT, TriGAT],isDirected = False):
     if isDirected:
         models = [MonoGAT]
-    return eval_gnn(dataset, GATConv, channel_size, dropout, lr, wd, heads=heads,
+    return eval_gnn(dataset, GATConv, channel_size, dropout, lr, wd, heads=heads, attention_dropout=attention_dropout,
                       models=models, num_runs=runs, num_splits=splits, test_score=True,
                       train_examples = train_examples, val_examples = val_examples)
 
@@ -90,28 +94,28 @@ def eval_archs_gat(dataset, channel_size, dropout, lr, wd, heads,runs,splits,tra
 def eval_archs_gcn(dataset, conv, channel_size, dropout, lr, wd, runs,splits,train_examples,val_examples, models=[MonoModel, BiModel, TriModel], isDirected=False):
     if isDirected:
         models = [MonoModel]
-    return eval_gnn(dataset, conv, channel_size, dropout, lr, wd, heads=1,
+    return eval_gnn(dataset, conv, channel_size, dropout, lr, wd, heads=1,attention_dropout=0.3, # dummy values for heads and attention_dropout
                       models=models, num_runs=runs, num_splits=splits,test_score=True,
                       train_examples = train_examples, val_examples = val_examples)
 
 
 
 def eval_archs_rgcn(dataset, channel_size, dropout, lr, wd, runs,splits,train_examples,val_examples, models=[MonoRGCN]):
-    return eval_gnn(dataset, RGCNConv, channel_size, dropout, lr, wd, heads=1,
+    return eval_gnn(dataset, RGCNConv, channel_size, dropout, lr, wd, heads=1,attention_dropout=0.3,  # dummy values for heads and attention_dropout
                       models=models, num_runs=runs, num_splits=splits,test_score=True,
                       train_examples = train_examples, val_examples = val_examples)
 
 
 
-def eval(model, dataset, channel_size, dropout, lr, wd, heads, runs, splits, train_examples, val_examples, isDirected):
+def eval(model, dataset, channel_size, dropout, lr, wd, heads, attention_dropout, runs, splits, train_examples, val_examples, isDirected):
     if model == 'gat':
-        return eval_archs_gat(dataset, channel_size, dropout, lr, wd, heads, splits=splits, runs=runs, train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
+        return eval_archs_gat(dataset, channel_size, dropout, lr, wd, heads, attention_dropout, splits=splits, runs=runs, train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
     elif model == 'rgcn':
         return eval_archs_rgcn(dataset, channel_size, dropout, lr, wd, splits=splits, runs=runs, train_examples = train_examples, val_examples = val_examples)
     else:
         return eval_archs_gcn(dataset, name2conv[model], channel_size, dropout, lr, wd, splits=splits, runs=runs, train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
 
-def eval_original(model, dataset_name, directionality, size, dropout, lr, wd, heads,
+def eval_original(model, dataset_name, directionality, size, dropout, lr, wd, heads,attention_dropout,
         splits, runs, train_examples, val_examples):
     isDirected = (directionality != 'undirected')
     isReversed = (directionality == 'reversed')
@@ -120,10 +124,11 @@ def eval_original(model, dataset_name, directionality, size, dropout, lr, wd, he
                            f'data/graphs/processed/{dataset_name}/{dataset_name}.content',
                            directed=isDirected, reverse=isReversed)
     df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr, splits=splits, runs=runs,
-                  dropout=dropout, wd=wd, heads=heads,train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
+                  dropout=dropout, wd=wd, heads=heads, attention_dropout=attention_dropout,
+                  train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
     return df_cur
 
-def eval_conf(model, dataset_name, directionality, size, dropout, lr, wd, heads,
+def eval_conf(model, dataset_name, directionality, size, dropout, lr, wd, heads,attention_dropout,
         splits, runs, train_examples, val_examples, conf_inits):
     isDirected = (directionality != 'undirected')
     isReversed = (directionality == 'reversed')
@@ -134,13 +139,13 @@ def eval_conf(model, dataset_name, directionality, size, dropout, lr, wd, heads,
                                f'data/graphs/processed/{dataset_name}/{dataset_name}.content',
                                directed=isDirected, reverse=isReversed)
         df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr, splits=splits, runs=runs,
-                      dropout=dropout, wd=wd, heads=heads,
+                      dropout=dropout, wd=wd, heads=heads,attention_dropout=attention_dropout,
                       train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
         df_cur['confmodel_num'] = i
         df_val = pd.concat([df_val, df_cur])
     return df_val
 
-def eval_sbm(model, dataset_name, directionality, size, dropout, lr, wd, heads,
+def eval_sbm(model, dataset_name, directionality, size, dropout, lr, wd, heads,attention_dropout,
         splits, runs, train_examples, val_examples, sbm_inits):
     isDirected = (directionality != 'undirected')
     isReversed = (directionality == 'reversed')
@@ -152,7 +157,7 @@ def eval_sbm(model, dataset_name, directionality, size, dropout, lr, wd, heads,
                                f'data/graphs/processed/{dataset_name}/{dataset_name}.content',
                                directed=isDirected, reverse=isReversed)
         df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr, splits=splits, runs=runs,
-                      dropout=dropout, wd=wd, heads=heads,
+                      dropout=dropout, wd=wd, heads=heads,attention_dropout=attention_dropout,
                       train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
         df_cur['sbm_num'] = i
         df_val = pd.concat([df_val, df_cur])
@@ -177,17 +182,20 @@ if __name__ == '__main__':
         df_val = pd.read_csv(val_out)
     else:
         df_val = pd.DataFrame(
-            columns='conv arch ch dropout lr wd heads splits inits val_accs val_avg val_std'
+            columns='conv arch ch dropout lr wd heads attention_dropout splits inits val_accs val_avg val_std'
                     ' test_accs test_avg test_std stopped elapsed'.split())
     if args.conf:
-        df_cur = eval_conf(args.model, args.dataset, args.directionality, args.size, args.dropout, args.lr, args.wd, args.heads,
+        df_cur = eval_conf(args.model, args.dataset, args.directionality, args.size, args.dropout, args.lr, args.wd,
+                args.heads, args.attention_dropout,
                 args.splits, args.runs, args.train_examples, args.val_examples, args.conf_inits)
     elif args.sbm:
-        df_cur = eval_sbm(args.model, args.dataset, args.directionality, args.size, args.dropout, args.lr, args.wd, args.heads,
+        df_cur = eval_sbm(args.model, args.dataset, args.directionality, args.size, args.dropout, args.lr, args.wd,
+                args.heads, args.attention_dropout,
                 args.splits, args.runs, args.train_examples, args.val_examples, args.sbm_inits)
 
     else:
-        df_cur = eval_original(args.model, args.dataset, args.directionality, args.size, args.dropout, args.lr, args.wd, args.heads,
-        args.splits, args.runs, args.train_examples, args.val_examples)
+        df_cur = eval_original(args.model, args.dataset, args.directionality, args.size, args.dropout, args.lr, args.wd,
+                args.heads, args.attention_dropout,
+                args.splits, args.runs, args.train_examples, args.val_examples)
     df_val = pd.concat([df_val, df_cur])
     df_val.to_csv(val_out, index=False)

@@ -61,7 +61,7 @@ val_out = f'reports/results/eval/{args.model}_val_{args.dataset}_{args.direction
 if os.path.exists(val_out):
     df_val = pd.read_csv(val_out)
 else:
-    df_val = pd.DataFrame(columns='conv arch ch dropout lr wd heads splits inits val_accs val_avg val_std test_accs test_avg test_std stopped elapsed'.split())
+    df_val = pd.DataFrame(columns='conv arch ch dropout lr wd heads attention_dropout splits inits val_accs val_avg val_std test_accs test_avg test_std stopped elapsed'.split())
     
 def eval_archs_gcn(dataset,conv,channel_size,dropout,lr,wd,models=[MonoModel, BiModel, TriModel]):
     if isDirected:
@@ -70,29 +70,31 @@ def eval_archs_gcn(dataset,conv,channel_size,dropout,lr,wd,models=[MonoModel, Bi
            models=models,num_runs=num_runs,num_splits=num_splits,
            train_examples = args.train_examples, val_examples = args.val_examples)
 
-def eval_archs_gat(dataset, channel_size, dropout, lr, wd, heads, models=[MonoGAT, BiGAT, TriGAT]):
+def eval_archs_gat(dataset, channel_size, dropout, lr, wd, heads, attention_dropout=0.3, models=[MonoGAT, BiGAT, TriGAT]):
     if isDirected:
         models = [MonoGAT]
-    return eval_gnn(dataset, GATConv, channel_size, dropout, lr, wd, heads=heads,
+    return eval_gnn(dataset, GATConv, channel_size, dropout, lr, wd, heads=heads, attention_dropout=attention_dropout,
                       models=models, num_runs=args.runs, num_splits=args.splits,
                       train_examples = args.train_examples, val_examples = args.val_examples)
 def contains(df_val,ch,lr,dropout,wd):
     return ((df_val['ch']==ch) & (df_val['lr']==lr) & (df_val['dropout']==dropout) & (df_val['wd']==wd)).any()
-def contains_gat(df_val,ch,lr,dropout,wd,heads):
-    return ((df_val['ch']==ch) & (df_val['lr']==lr) & (df_val['dropout']==dropout)  & (df_val['wd']==wd) & (df_val['heads']==heads)).any()
+def contains_gat(df_val,ch,lr,dropout,wd,heads,attention_dropout):
+    return ((df_val['ch']==ch) & (df_val['lr']==lr) & (df_val['dropout']==dropout)  & (df_val['wd']==wd) & (df_val['heads']==heads) & (df_val['attention_dropout']==attention_dropout)).any()
 
 for ch in [96]:
-    for lr in [1e-2,5e-2,1e-1]:
-        for dropout in [0.2,0.4,0.6,0.8]:
-            for wd in [1e-2,1e-1,5e-1,1]:
+    for lr in [1e-2]:
+        for dropout in [0.4]:
+            for wd in [1e-2]:
                 if args.model == 'gat':
-                    for heads in [1,2,4]:
-                        if contains_gat(df_val,ch,lr,dropout,wd,heads):
-                            print('already calculated!')
-                            continue
-                        df_cur = eval_archs_gat(dataset=dataset,channel_size=ch,lr=lr,dropout=dropout,wd=wd,heads=heads)
-                        df_val = pd.concat([df_val,df_cur])
-                        df_val.to_csv(val_out,index=False)
+                    for heads in [4]:
+                        for attention_dropout in [0.2,0.4,0.6,0.8]:
+                            if contains_gat(df_val,ch,lr,dropout,wd,heads,attention_dropout):
+                                print('already calculated!')
+                                continue
+                            df_cur = eval_archs_gat(dataset=dataset,channel_size=ch,lr=lr,
+                                        dropout=dropout,wd=wd,heads=heads,attention_dropout=attention_dropout)
+                            df_val = pd.concat([df_val,df_cur])
+                            df_val.to_csv(val_out,index=False)
                 else:                        
                     if contains(df_val,ch,lr,dropout,wd):
                         print('already calculated!')

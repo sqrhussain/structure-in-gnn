@@ -1,6 +1,7 @@
 import torch
 from src.evaluation.network_split import NetworkSplitShchur
 from sklearn.linear_model import LogisticRegression
+from src.data.data_loader import EmbeddingData
 
 
 def test_embedding(train_z, train_y, test_z, test_y, solver='lbfgs',
@@ -42,4 +43,15 @@ def test_method(data, num_splits=100,
         ts = test_embedding(z[split.train_mask], data[0].y[split.train_mask],
                             z[split.test_mask], data[0].y[split.test_mask], max_iter=100)
         tests.append(ts)
+    return tests
+
+
+def report_test_acc_unsupervised_embedding(tmp,dataset,embfile,attrfile,
+                        num_splits, train_examples, val_examples):
+    tests = []
+    emb = EmbeddingData(tmp, dataset,embfile,attrfile)
+    print(f'started test {dataset}')
+    test = test_method(emb, num_splits=num_splits, train_examples = train_examples, val_examples = train_examples)
+    print(str(test) + '\n')
+    tests = tests + test
     return tests

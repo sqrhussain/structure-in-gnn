@@ -14,7 +14,7 @@ from sklearn.metrics import f1_score
 
 
 def train_gnn(dataset, channels, modelType, architecture,
-              lr, wd, heads, dropout,
+              lr, wd, heads, dropout, attention_dropout,
               epochs,
               train_examples, val_examples,
               split_seed=0, init_seed=0,
@@ -28,7 +28,7 @@ def train_gnn(dataset, channels, modelType, architecture,
     data = dataset[0].to(device)
 
     if modelType == GATConv:
-        model = architecture(dataset, channels, dropout=dropout, heads=heads).to(device)
+        model = architecture(dataset, channels, dropout=dropout, heads=heads,attention_dropout=attention_dropout).to(device)
     else:
         model = architecture(modelType, dataset, channels, dropout).to(device)
 
@@ -77,7 +77,7 @@ def train_gnn(dataset, channels, modelType, architecture,
 
 
 def train_gnn_multiple_runs(dataset, channels, modelType, architecture,
-                            lr, wd, heads, dropout,
+                            lr, wd, heads, dropout, attention_dropout,
                             train_examples, val_examples,
                             runs, epochs, split_seed=0,
                             test_score=False, actual_predictions=False):
@@ -87,7 +87,7 @@ def train_gnn_multiple_runs(dataset, channels, modelType, architecture,
     stoppeds = []
     for i in range(runs):
         val_acc, stopped, test_acc = train_gnn(dataset, channels, modelType, architecture, lr=lr, wd=wd, epochs=epochs,
-                                               heads=heads, dropout=dropout,
+                                               heads=heads, dropout=dropout, attention_dropout=attention_dropout,
                                                split_seed=split_seed, init_seed=i, test_score=test_score,
                                                actual_predictions=actual_predictions,
                                                train_examples = train_examples, val_examples = val_examples)
@@ -105,12 +105,12 @@ def train_gnn_multiple_runs(dataset, channels, modelType, architecture,
 
 def eval_gnn(dataset,
              conv,
-             channel_size, dropout, lr, wd, heads,
+             channel_size, dropout, lr, wd, heads,attention_dropout,
              models=[MonoModel, BiModel, TriModel],
              num_splits=100, num_runs=20,
              test_score=False, actual_predictions=False,
              train_examples = 20, val_examples = 30):
-    columns = ['conv', 'arch', 'ch', 'dropout', 'lr', 'wd', 'heads', 'splits', 'inits',
+    columns = ['conv', 'arch', 'ch', 'dropout', 'lr', 'wd', 'heads', 'attention_dropout', 'splits', 'inits',
                'val_accs', 'val_avg', 'val_std', 'stopped', 'elapsed']
     if test_score:
         columns += ['test_accs', 'test_avg', 'test_std']
@@ -126,6 +126,7 @@ def eval_gnn(dataset,
             val_acc, stopped, test_acc = train_gnn_multiple_runs(dataset, [channel_size // channels // heads], conv,
                                                                  runs=num_runs, epochs=200, split_seed=seed,
                                                                  architecture=model, lr=lr, wd=wd, heads=heads,
+                                                                 attention_dropout=attention_dropout,
                                                                  dropout=dropout,test_score=test_score,
                                                                  train_examples = train_examples, val_examples = val_examples)
             val_accs += val_acc
@@ -137,7 +138,7 @@ def eval_gnn(dataset,
 
         elapsed = time.time() - start
         row = {'conv': conv.__name__, 'arch': model.__name__[0], 'ch': channel_size,
-               'dropout': dropout, 'lr': lr, 'wd': wd, 'heads': heads,
+               'dropout': dropout, 'lr': lr, 'wd': wd, 'heads': heads, 'attention_dropout':attention_dropout,
                'splits': num_splits, 'inits': num_runs,
                'val_accs': val_accs, 'val_avg': val_avg, 'val_std': val_std,
                'stopped': stoppeds, 'elapsed': elapsed}

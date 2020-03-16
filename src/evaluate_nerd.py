@@ -1,45 +1,70 @@
-from embedding_evaluation_framework import EmbeddingData, eval_n2v
-import pandas as pd
-import numpy as np
+from subprocess import call
 import os
+import pandas as pd
+import argparse
+from src.evaluation.embedding_evaluation_module import report_test_acc_unsupervised_embedding
+import numpy as np
 
-lrs = [0.005,0.025,0.125]
-negs = [5,10,15,20]
 
-inits = 20
-splits = 100
+parser = argparse.ArgumentParser(description="Evaluate embeddings for NERD.")
+parser.add_argument('--datasets',
+                    nargs='+',
+                    help='datasets to process, e.g., --dataset cora pubmed')
 
-val_out = 'eval/nerd.csv'
+
+num_inits = 20
+num_splits = 100
+
+def extract_hyperparams(df_hyper):
+    print(df_hyper)
+    return int(df_hyper.neg), df_hyper.lr
+
+
+def train_count(dataset):
+    if 'webkb' in dataset:
+        return 10
+    return 20
+
+
+def val_count(dataset):
+    if 'webkb' in dataset:
+        return 15
+    return 30
+
+
+args = parser.parse_args()
+directionalities = 'undirected directed'.split()
+method = 'nerd'
+
+val_out = f'reports/results/emb_acc/{method}.csv'
 
 if os.path.exists(val_out):
-    df_nerd = pd.read_csv(val_out)
+    df_val = pd.read_csv(val_out)
 else:
-    df_nerd = pd.DataFrame(columns='splits inits type lr neg val_acc val_avg val_std'.split())
+    df_val = pd.DataFrame(
+        columns='method dataset directionality embedding neg lr inits splits test_acc test_avg test_std'.split())
 
-def contains(df_val,tp,lr,neg):
-    return ((df_val['type']==tp) & (df_val['lr']==lr) & (df_val['neg']==neg)).any()
+for dataset in args.datasets:
+    for directionality in directionalities:
+        directory = f'data/embedding/nerd/{dataset}'
+        df = pd.read_csv('reports/results/eval/nerd.csv')
+        df = df[df.val_avg == df.val_avg.max()].reset_index().loc[0]
+        neg, rho = extract_hyperparams(df)
 
+        acc = []
+        for embtype in 'hub aut'.split():
+            for init in range(num_inits):
+                embfile = f'{dataset}.nerd_{embtype}_neg{neg}_rho{rho}_init{init}.{directionality}.emb'
+                embpath = f'{directory}/{embfile}'
+                if not os.path.exists(embpath):
+                    continue
+                attrfile = f'data/graphs/processed/{dataset}/{dataset}.content'
+                cur_acc = report_test_acc_unsupervised_embedding(f'data/tmp/nerd{embfile}',dataset,embpath,attrfile,
+                            num_splits,train_count(dataset), val_count(dataset))
 
-for neg in negs:
-    for lr in lrs:
-        for tp in ['hub','aut']:
-            if contains(df_nerd,tp,lr,neg):
-                print('already calculated!')
-                continue
-            print(f'evaluating type={tp} lr={lr}, neg={neg}')
-            vals = []
-            tests = []
-            for init in range(inits):
-                print(f' init {init}')
-                target_path = f'../data/repeated-embedding/nerd/{init}/cora.line_{neg}_{lr}.undirected.{tp}.emb'
-                if not os.path.exists(target_path):
-                    print(f'{target_path} does not exist')
-                emb = EmbeddingData(f'/tmp/nerdUndlr{lr}neg{neg}EmbCoraInit{init}','cora',f'line_{neg}_{lr}',directed=False,initialization=f'nerd/{init}',nerd='aut')
-                val = eval_n2v(emb[0],num_splits=splits)
-                vals = vals + val
-    #             tests = tests + test
-            df_nerd = df_nerd.append({'splits':splits, 'inits':inits, 'type':tp, 'lr':lr, 'neg':neg,
-                                    'val_acc':vals, 'val_avg':np.mean(vals), 'val_std':np.std(vals),
-    #                                 'test_acc':tests, 'test_avg':np.mean(tests), 'test_std':np.std(tests)
-                                   },ignore_index=True)
-            df_nerd.to_csv(val_out,index=False)
+                acc = acc + cur_acc
+            row = {'method':method, 'dataset':dataset, 'directionality':directionality, 'embedding':embtype,
+               'neg':neg, 'lr':rho, 'inits':num_inits, 'splits':num_splits,
+               'test_acc':acc, 'test_avg':np.array(acc).mean(), 'test_std':np.array(acc).std()}
+            df_val = df_val.append(row, ignore_index=True)
+            df_val.to_csv(val_out, index=False) 

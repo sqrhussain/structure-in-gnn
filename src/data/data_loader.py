@@ -83,7 +83,7 @@ class EmbeddingData(InMemoryDataset):
         self.data, self.slices = torch.load(self.processed_paths[0])
 
     def process(self):
-        data = load_embedding(emb_path,features_path)
+        data = load_embedding(embFile=self.embedding_path,featFile=self.attributes_path)
         torch.save(self.collate([data]), self.processed_paths[0])
         
     def __repr__(self):
