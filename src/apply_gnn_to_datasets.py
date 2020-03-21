@@ -1,6 +1,6 @@
 from src.evaluation.gnn_evaluation_module import eval_gnn
 from src.models.gat_models import MonoGAT#, BiGAT, TriGAT
-from src.models.rgcn_models import MonoRGCN
+from src.models.rgcn_models import MonoRGCN, RGCN2
 from src.models.multi_layered_model import MonoModel#, BiModel, TriModel
 from torch_geometric.nn import GCNConv, SAGEConv, GATConv, RGCNConv
 from src.data.data_loader import GraphDataset
@@ -85,7 +85,7 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-name2conv = {'gcn': GCNConv, 'sage': SAGEConv, 'gat': GATConv, 'rgcn': RGCNConv}
+name2conv = {'gcn': GCNConv, 'sage': SAGEConv, 'gat': GATConv, 'rgcn': RGCNConv, 'rgcn2':RGCN2}
 
 def eval_archs_gat(dataset, channel_size, dropout, lr, wd, heads,attention_dropout,runs,splits,train_examples,val_examples, models=[MonoGAT],isDirected = False):
     if isDirected:
@@ -104,8 +104,8 @@ def eval_archs_gcn(dataset, conv, channel_size, dropout, lr, wd, runs,splits,tra
 
 
 
-def eval_archs_rgcn(dataset, channel_size, dropout, lr, wd, runs,splits,train_examples,val_examples, models=[MonoRGCN]):
-    return eval_gnn(dataset, RGCNConv, channel_size, dropout, lr, wd, heads=1,attention_dropout=0.3,  # dummy values for heads and attention_dropout
+def eval_archs_rgcn(dataset, conv, channel_size, dropout, lr, wd, runs,splits,train_examples,val_examples, models=[MonoRGCN]):
+    return eval_gnn(dataset, conv, channel_size, dropout, lr, wd, heads=1,attention_dropout=0.3,  # dummy values for heads and attention_dropout
                       models=models, num_runs=runs, num_splits=splits,test_score=True,
                       train_examples = train_examples, val_examples = val_examples)
 
@@ -114,8 +114,8 @@ def eval_archs_rgcn(dataset, channel_size, dropout, lr, wd, runs,splits,train_ex
 def eval(model, dataset, channel_size, dropout, lr, wd, heads, attention_dropout, runs, splits, train_examples, val_examples, isDirected):
     if model == 'gat':
         return eval_archs_gat(dataset, channel_size, dropout, lr, wd, heads, attention_dropout, splits=splits, runs=runs, train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
-    elif model == 'rgcn':
-        return eval_archs_rgcn(dataset, channel_size, dropout, lr, wd, splits=splits, runs=runs, train_examples = train_examples, val_examples = val_examples)
+    elif model == 'rgcn' or model == 'rgcn2':
+        return eval_archs_rgcn(dataset, name2conv[model], channel_size, dropout, lr, wd, splits=splits, runs=runs, train_examples = train_examples, val_examples = val_examples)
     else:
         return eval_archs_gcn(dataset, name2conv[model], channel_size, dropout, lr, wd, splits=splits, runs=runs, train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
 
