@@ -82,6 +82,28 @@ class BiGAT(torch.nn.Module):
         
         return x
     
+
+class ASYMGAT(BiGAT):
+    def __init__(self,dataset,channels,heads=1,dropout=0.6,attention_dropout=0.3):
+        super(ASYMGAT,self).__init__(dataset,channels,heads,dropout,attention_dropout)
+        
+    def forward(self, data): 
+        x, edge_index = data.x, data.edge_index
+        st_edges = data.edge_index.t()[1-data.is_reversed].t()
+        ts_edges = data.edge_index.t()[data.is_reversed].t()
+#         print(ts_edges.shape)
+        for i in range(len(self.conv_st)):
+            x1 = self.conv_st[i](x,st_edges)
+            x2 = self.conv_ts[i](x,ts_edges)
+            x = F.elu(torch.cat((x1, x2), dim=1))
+            x = F.dropout(x,p=self.dropout,training=self.training)
+        
+        # last layer
+        x = self.last(x,edge_index)
+        x = F.softmax(x,dim=1) 
+        
+        return x
+
 class TriGAT(torch.nn.Module):
     def __init__(self,dataset,channels,heads=1,dropout=0.6,attention_dropout=0.3):
         super(TriGAT,self).__init__()
@@ -127,3 +149,28 @@ class TriGAT(torch.nn.Module):
         x = F.softmax(x,dim=1) 
         
         return x
+
+
+class pASYMGAT(TriGAT):
+    def __init__(self,dataset,channels,heads=1,dropout=0.6,attention_dropout=0.3):
+        super(pASYMGAT,self).__init__(dataset,channels,heads,dropout,attention_dropout)
+        
+    def forward(self, data): 
+        x, edge_index = data.x, data.edge_index
+        st_edges = data.edge_index.t()[1-data.is_reversed].t()
+        ts_edges = data.edge_index.t()[data.is_reversed].t()
+#         print(ts_edges.shape)
+        for i in range(len(self.conv_st)):
+            x1 = self.conv_st[i](x,st_edges)
+            x2 = self.conv_ts[i](x,ts_edges)
+            x3 = self.conv[i](x,edge_index)
+            x = F.elu(torch.cat((x1,x2,x3),dim=1))
+            x = F.dropout(x,p=self.dropout,training=self.training)
+        
+        # last layer
+        x = self.last(x,edge_index)
+        x = F.softmax(x,dim=1) 
+        
+        return x
+
+

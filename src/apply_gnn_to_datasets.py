@@ -1,7 +1,7 @@
 from src.evaluation.gnn_evaluation_module import eval_gnn
-from src.models.gat_models import MonoGAT, BiGAT, TriGAT
+from src.models.gat_models import MonoGAT#, BiGAT, TriGAT
 from src.models.rgcn_models import MonoRGCN
-from src.models.multi_layered_model import MonoModel, BiModel, TriModel
+from src.models.multi_layered_model import MonoModel#, BiModel, TriModel
 from torch_geometric.nn import GCNConv, SAGEConv, GATConv, RGCNConv
 from src.data.data_loader import GraphDataset
 import warnings
@@ -35,6 +35,10 @@ def parse_args():
                         type=bool,
                         default=False,
                         help='Is SBM evaluation. Default is False.')
+    parser.add_argument('--flipped',
+                        type=bool,
+                        default=False,
+                        help='Evaluating with flipped edges? Default is False.')
     parser.add_argument('--heads',
                         type=int,
                         default=4,
@@ -83,7 +87,7 @@ def parse_args():
 
 name2conv = {'gcn': GCNConv, 'sage': SAGEConv, 'gat': GATConv, 'rgcn': RGCNConv}
 
-def eval_archs_gat(dataset, channel_size, dropout, lr, wd, heads,attention_dropout,runs,splits,train_examples,val_examples, models=[MonoGAT, BiGAT, TriGAT],isDirected = False):
+def eval_archs_gat(dataset, channel_size, dropout, lr, wd, heads,attention_dropout,runs,splits,train_examples,val_examples, models=[MonoGAT],isDirected = False):
     if isDirected:
         models = [MonoGAT]
     return eval_gnn(dataset, GATConv, channel_size, dropout, lr, wd, heads=heads, attention_dropout=attention_dropout,
@@ -91,7 +95,7 @@ def eval_archs_gat(dataset, channel_size, dropout, lr, wd, heads,attention_dropo
                       train_examples = train_examples, val_examples = val_examples)
 
 
-def eval_archs_gcn(dataset, conv, channel_size, dropout, lr, wd, runs,splits,train_examples,val_examples, models=[MonoModel, BiModel, TriModel], isDirected=False):
+def eval_archs_gcn(dataset, conv, channel_size, dropout, lr, wd, runs,splits,train_examples,val_examples, models=[MonoModel], isDirected=False):
     if isDirected:
         models = [MonoModel]
     return eval_gnn(dataset, conv, channel_size, dropout, lr, wd, heads=1,attention_dropout=0.3, # dummy values for heads and attention_dropout
@@ -121,6 +125,19 @@ def eval_original(model, dataset_name, directionality, size, dropout, lr, wd, he
     isReversed = (directionality == 'reversed')
     dataset = GraphDataset(f'data/tmp/{dataset_name}{("_" + directionality) if isDirected else ""}', dataset_name,
                            f'data/graphs/processed/{dataset_name}/{dataset_name}.cites',
+                           f'data/graphs/processed/{dataset_name}/{dataset_name}.content',
+                           directed=isDirected, reverse=isReversed)
+    df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr, splits=splits, runs=runs,
+                  dropout=dropout, wd=wd, heads=heads, attention_dropout=attention_dropout,
+                  train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
+    return df_cur
+
+def eval_random(model, dataset_name, directionality, size, dropout, lr, wd, heads,attention_dropout,
+        splits, runs, train_examples, val_examples):
+    isDirected = (directionality != 'undirected')
+    isReversed = (directionality == 'reversed')
+    dataset = GraphDataset(f'data/tmp/{dataset_name}{("_" + directionality) if isDirected else ""}-random', dataset_name,
+                           f'data/graphs/random/{dataset_name}/{dataset_name}.cites',
                            f'data/graphs/processed/{dataset_name}/{dataset_name}.content',
                            directed=isDirected, reverse=isReversed)
     df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr, splits=splits, runs=runs,
@@ -163,6 +180,25 @@ def eval_sbm(model, dataset_name, directionality, size, dropout, lr, wd, heads,a
         df_val = pd.concat([df_val, df_cur])
     return df_val
     
+def eval_flipped(model, dataset_name, directionality, size, dropout, lr, wd, heads,attention_dropout,
+        splits, runs, train_examples, val_examples, percentages=range(10,51,10)):
+    print(percentages)
+    isDirected = (directionality != 'undirected')
+    isReversed = (directionality == 'reversed')
+    df_val = pd.DataFrame()
+    for i in percentages:
+        print(f'data/graphs/processed/{dataset_name}/{dataset_name}.content')
+        dataset = GraphDataset(f'data/tmp/{dataset_name}{("_" + directionality) if isDirected else ""}-flipped{i}', dataset_name,
+                               f'data/graphs/flip_edges/{dataset_name}/{dataset_name}_{i}.cites',
+                               f'data/graphs/processed/{dataset_name}/{dataset_name}.content',
+                               directed=isDirected, reverse=isReversed)
+        df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr, splits=splits, runs=runs,
+                      dropout=dropout, wd=wd, heads=heads,attention_dropout=attention_dropout,
+                      train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
+        df_cur['percentage'] = i
+        df_val = pd.concat([df_val, df_cur])
+    return df_val
+    
 if __name__ == '__main__':
     warnings.filterwarnings('ignore')
     args = parse_args()
@@ -192,7 +228,10 @@ if __name__ == '__main__':
         df_cur = eval_sbm(args.model, args.dataset, args.directionality, args.size, args.dropout, args.lr, args.wd,
                 args.heads, args.attention_dropout,
                 args.splits, args.runs, args.train_examples, args.val_examples, args.sbm_inits)
-
+    elif args.flipped:
+        df_cur = eval_flipped(args.model, args.dataset, args.directionality, args.size, args.dropout, args.lr, args.wd,
+                args.heads, args.attention_dropout,
+                args.splits, args.runs, args.train_examples, args.val_examples)
     else:
         df_cur = eval_original(args.model, args.dataset, args.directionality, args.size, args.dropout, args.lr, args.wd,
                 args.heads, args.attention_dropout,

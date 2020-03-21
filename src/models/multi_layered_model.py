@@ -71,6 +71,8 @@ class ASYM(BiModel):
 
     def __init__(self, convType, dataset, channels, dropout=0.8):
         super(ASYM, self).__init__(convType, dataset, channels, dropout)
+        self.last0 = convType(channels[-1]*2, dataset.num_classes)
+        self.last1 = convType(channels[-1]*2, dataset.num_classes)
 
 
     def forward(self, data):
@@ -85,7 +87,9 @@ class ASYM(BiModel):
             x = F.dropout(x, training=self.training, p=self.dropout)
 
         # last layer
-        x = self.last(x, edge_index)
+        x1 = self.last0(x, st_edges)
+        x2 = self.last1(x, ts_edges)
+        x = x1+x2
         x = F.log_softmax(x, dim=1)
 
         return x
@@ -137,6 +141,9 @@ class TriModel(torch.nn.Module):
 class pASYM(TriModel):
     def __init__(self, convType, dataset, channels, dropout=0.8):
         super(pASYM, self).__init__(convType, dataset, channels, dropout)
+        self.last0 = convType(channels[-1]*3, dataset.num_classes)
+        self.last1 = convType(channels[-1]*3, dataset.num_classes)
+        self.last2 = convType(channels[-1]*3, dataset.num_classes)
 
 
     def forward(self, data):
@@ -152,7 +159,10 @@ class pASYM(TriModel):
             x = F.dropout(x, training=self.training, p=self.dropout)
 
         # last layer
-        x = self.last(x, edge_index)
+        x1 = self.last0(x, st_edges)
+        x2 = self.last1(x, ts_edges)
+        x3 = self.last2(x, edge_index)
+        x = x1+x2+x3
         x = F.log_softmax(x, dim=1)
 
         return x
