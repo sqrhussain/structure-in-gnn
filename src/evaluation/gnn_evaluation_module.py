@@ -13,12 +13,28 @@ from src.evaluation.network_split import NetworkSplitShchur
 from sklearn.metrics import f1_score
 
 
+def build_complete_graph_per_class(data,split):
+    target = [x.item() for x in data.y]
+    labels = set(target)
+    num_nodes = len(target)
+    all_rows = []
+    all_cols = []
+    for c in labels:
+        labeled_nodes = [u for u in range(num_nodes) if split.train_mask[u] and target[u] == c]
+        edges = [[u, v] for u in labeled_nodes for v in labeled_nodes if u > v]
+        rows = [e[0] for e in edges]
+        cols = [e[1] for e in edges]
+        all_rows = all_rows + rows
+        all_cols = all_cols + cols
+
+    return [all_rows,all_cols]
+
 def train_gnn(dataset, channels, modelType, architecture,
               lr, wd, heads, dropout, attention_dropout,
               epochs,
               train_examples, val_examples,
               split_seed=0, init_seed=0,
-              test_score=False, actual_predictions=False):
+              test_score=False, actual_predictions=False, add_complete_edges=False):
     # training process (without batches/transforms)
 
     # we assume that the only sources of randomness are the data split and the initialization.
@@ -26,14 +42,19 @@ def train_gnn(dataset, channels, modelType, architecture,
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     data = dataset[0].to(device)
+    split = NetworkSplitShchur(dataset, train_examples_per_class=train_examples,early_examples_per_class=0,
+                 val_examples_per_class=val_examples, split_seed=split_seed)
+
+    # for each class, add a complete graph of its labeled nodes
+    if add_complete_edges:
+        additional_edge_index = build_complete_graph_per_class(data, split)
+        data.edge_index = torch.cat([data.edge_index, torch.tensor(additional_edge_index)], 1)
 
     if modelType == GATConv:
         model = architecture(dataset, channels, dropout=dropout, heads=heads,attention_dropout=attention_dropout).to(device)
     else:
         model = architecture(modelType, dataset, channels, dropout).to(device)
 
-    split = NetworkSplitShchur(dataset, train_examples_per_class=train_examples,early_examples_per_class=0,
-                 val_examples_per_class=val_examples, split_seed=split_seed)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
     model.train()  # to enter training phase
