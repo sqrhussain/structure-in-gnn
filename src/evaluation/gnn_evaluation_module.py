@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import torch
 from src.models.multi_layered_model import MonoModel, BiModel, TriModel
-from torch_geometric.nn import GCNConv, SAGEConv, GATConv
+from torch_geometric.nn import GCNConv, SAGEConv, GATConv, APPNP
 import time
 import torch.nn.functional as F
 import copy
@@ -48,10 +48,12 @@ def train_gnn(dataset, channels, modelType, architecture,
     # for each class, add a complete graph of its labeled nodes
     if add_complete_edges:
         additional_edge_index = build_complete_graph_per_class(data, split)
-        data.edge_index = torch.cat([data.edge_index, torch.tensor(additional_edge_index)], 1)
+        data.edge_index = torch.cat([data.edge_index, torch.tensor(additional_edge_index).to(device)], 1)
 
     if modelType == GATConv:
         model = architecture(dataset, channels, dropout=dropout, heads=heads,attention_dropout=attention_dropout).to(device)
+    elif modelType == APPNP:
+        model = architecture(dataset, channels, dropout=dropout).to(device)
     else:
         model = architecture(modelType, dataset, channels, dropout).to(device)
 
@@ -79,7 +81,7 @@ def train_gnn(dataset, channels, modelType, architecture,
         # f1s.append(f1)
         if acc > maxacc:
             maxacc = acc
-            chosen = copy.deepcopy(model)
+            chosen = copy.copy(model)
         if epoch > 10 and acc * 10 < sum(accs[-11:-1]):
             stopped_at = epoch
             break
@@ -126,7 +128,7 @@ def train_gnn_multiple_runs(dataset, channels, modelType, architecture,
 
 def eval_gnn(dataset,
              conv,
-             channel_size, dropout, lr, wd, heads,attention_dropout,
+             channel_size, dropout, lr, wd, heads,attention_dropout=0.3,
              models=[MonoModel, BiModel, TriModel],
              num_splits=100, num_runs=20,
              test_score=False, actual_predictions=False,

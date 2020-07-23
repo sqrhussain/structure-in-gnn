@@ -30,4 +30,12 @@ if __name__ == '__main__':
     # generate_multiple_conf_models('data/graphs/processed/washington/washington.cites','data/graphs/confmodel/washington/washington_confmodel')
     # generate_multiple_conf_models('data/graphs/processed/wisconsin/wisconsin.cites','data/graphs/confmodel/wisconsin/wisconsin_confmodel')
     # generate_multiple_conf_models('data/graphs/processed/twitter/twitter.cites','data/graphs/confmodel/twitter/twitter_confmodel')
-    generate_multiple_conf_models('data/graphs/processed/webkb/webkb.cites','data/graphs/confmodel/webkb/webkb_confmodel')
+    # generate_multiple_conf_models('data/graphs/processed/webkb/webkb.cites','data/graphs/confmodel/webkb/webkb_confmodel')
+    generate_multiple_conf_models('data/graphs/processed/amazon_electronics_computers/amazon_electronics_computers.cites',
+                        'data/graphs/confmodel/amazon_electronics_computers/amazon_electronics_computers_confmodel')
+    generate_multiple_conf_models('data/graphs/processed/amazon_electronics_photo/amazon_electronics_photo.cites',
+                        'data/graphs/confmodel/amazon_electronics_photo/amazon_electronics_photo_confmodel')
+    generate_multiple_conf_models('data/graphs/processed/ms_academic_cs/ms_academic_cs.cites',
+                        'data/graphs/confmodel/ms_academic_cs/ms_academic_cs_confmodel')
+    generate_multiple_conf_models('data/graphs/processed/ms_academic_phy/ms_academic_phy.cites',
+                        'data/graphs/confmodel/ms_academic_phy/ms_academic_phy_confmodel')

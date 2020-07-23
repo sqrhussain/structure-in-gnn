@@ -7,12 +7,12 @@ from src.data.data_loader import FeatureOnlyData
 num_splits = 100
 
 
-def report_test_acc_unsupervised_embedding(dataset):
+def report_test_acc_unsupervised_embedding(dataset,seed):
     tests = []
     emb = FeatureOnlyData(f'data/tmp/{dataset.capitalize()}FeatsOnly', dataset,
                           f'data/graphs/processed/{dataset}/{dataset}.content')
     print(f'started test {dataset}')
-    test = test_method(emb, num_splits=num_splits, train_examples = train_count(dataset), val_examples = val_count(dataset))
+    test = test_method(emb, num_splits=num_splits, train_examples = train_count(dataset), val_examples = val_count(dataset), seed=seed)
     print(str(test) + '\n')
     tests = tests + test
     return tests
@@ -25,7 +25,8 @@ if os.path.exists(val_out):
 else:
     test_acc = pd.DataFrame(columns='method dataset test_acc test_avg test_std'.split())
     
-datasets = 'webkb'.split()
+# datasets = 'cora citeseer pubmed twitter webkb cora_full'.split()
+datasets = 'amazon_electronics_computers amazon_electronics_photo ms_academic_cs ms_academic_phy'.split()
 
 def train_count(dataset):
     if 'webkb' in dataset:
@@ -39,7 +40,10 @@ def val_count(dataset):
 
 for dataset in datasets:
     print(f'evaluating {dataset}')
-    tests = report_test_acc_unsupervised_embedding(dataset=dataset)
+    tests = []
+    inits = 20
+    for seed in range(inits):
+        tests = tests + report_test_acc_unsupervised_embedding(dataset=dataset,seed=seed)
     test_acc = test_acc.append({'method': 'features-only-baseline', 'dataset': dataset,
                                 'test_acc': tests, 'test_avg': np.mean(tests), 'test_std': np.std(tests)},
                                ignore_index=True)

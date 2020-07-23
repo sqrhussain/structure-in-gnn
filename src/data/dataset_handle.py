@@ -269,8 +269,33 @@ def create_webkb_small():
                             target_processed_path = 'data/graphs/processed',
                             raw_folder_name = 'webkb_small', threshold=25,select_largest_component=False, sample_features=50)
 
+def create_jigsaw_graph(filename):
+
+    # WARNING: the graph can have several connected components
+    df = pd.read_csv(f'data/graphs/raw/jigsaw/{filename}.csv')
+    features = [[s.strip() for s in x[1:-1].split(',')] for x in df.intermediate.values]
+    labels = df.toxic.values
+    neighbors = [[s.strip() for s in x[1:-1].split(',')] for x in df.knn.values]
+    edges = [[str(i),j] for i in df.id.values for j in neighbors[i]]
+    if not os.path.exists(f'data/graphs/processed/jigsaw_{filename}'):
+        os.mkdir(f'data/graphs/processed/jigsaw_{filename}')
+    with open(f'data/graphs/processed/jigsaw_{filename}/jigsaw_{filename}.cites','w') as outfile:
+        for edge in edges:
+            outfile.write(' '.join(edge)+'\n')
+        
+    with open(f'data/graphs/processed/jigsaw_{filename}/jigsaw_{filename}.content','w') as outfile:
+        for i in df.id.values:
+            outfile.write(str(i) + ' ' + ' '.join(features[i]) + ' ' +str(labels[i]) + '\n')
+
+
+
+
+
+
+
 if __name__ == '__main__':
-    create_webkb_small()
+    create_jigsaw_graph('validation_knn_40')
+    # create_webkb_small()
     #create_cornell()
     #create_wisconsin()
     #create_washington()

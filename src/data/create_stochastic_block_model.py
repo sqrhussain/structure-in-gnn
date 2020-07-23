@@ -209,6 +209,23 @@ if __name__ == "__main__":
     #                            'data/community_id_dicts/twitter/twitter_louvain.pickle',
     #                            'data/graphs/sbm/twitter/twitter_sbm')
 
-    create_multiple_sbm_graphs('data/graphs/processed/webkb/webkb.cites',
-                               'data/community_id_dicts/webkb/webkb_louvain.pickle',
-                               'data/graphs/sbm/webkb/webkb_sbm')
+    # create_multiple_sbm_graphs('data/graphs/processed/webkb/webkb.cites',
+    #                            'data/community_id_dicts/webkb/webkb_louvain.pickle',
+    #                            'data/graphs/sbm/webkb/webkb_sbm')
+
+    create_multiple_sbm_graphs('data/graphs/processed/amazon_electronics_computers/amazon_electronics_computers.cites',
+                               'data/community_id_dicts/amazon_electronics_computers/amazon_electronics_computers_louvain.pickle',
+                               'data/graphs/sbm/amazon_electronics_computers/amazon_electronics_computers_sbm')
+
+    create_multiple_sbm_graphs('data/graphs/processed/amazon_electronics_photo/amazon_electronics_photo.cites',
+                               'data/community_id_dicts/amazon_electronics_photo/amazon_electronics_photo_louvain.pickle',
+                               'data/graphs/sbm/amazon_electronics_photo/amazon_electronics_photo_sbm')
+
+    create_multiple_sbm_graphs('data/graphs/processed/ms_academic_cs/ms_academic_cs.cites',
+                               'data/community_id_dicts/ms_academic_cs/ms_academic_cs_louvain.pickle',
+                               'data/graphs/sbm/ms_academic_cs/ms_academic_cs_sbm')
+
+    create_multiple_sbm_graphs('data/graphs/processed/ms_academic_phy/ms_academic_phy.cites',
+                               'data/community_id_dicts/ms_academic_phy/ms_academic_phy_louvain.pickle',
+                               'data/graphs/sbm/ms_academic_phy/ms_academic_phy_sbm')
+

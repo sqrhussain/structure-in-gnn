@@ -95,15 +95,19 @@ class RGCN2(MessagePassing):
             **kwargs: Any additional data which is needed to construct and
                 aggregate messages, and to update node embeddings.
         """
-
-        size = [None, None] if size is None else size
-        size = [size, size] if isinstance(size, int) else size
-        size = size.tolist() if torch.is_tensor(size) else size
-        size = list(size) if isinstance(size, tuple) else size
+        mp_type = self.__get_mp_type__(edge_index)
+        if size is None:
+            size = [None, None]
+        elif isinstance(size, int):
+            size = [size, size]
+        elif torch.is_tensor(size):
+            size = size.tolist()
+        elif isinstance(size, tuple):
+            size = list(size)
         assert isinstance(size, list)
         assert len(size) == 2
 
-        kwargs = self.__collect__(edge_index, size, kwargs)
+        kwargs = self.__collect__(edge_index, size, mp_type, kwargs)
 
         msg_kwargs = self.__distribute__(self.__msg_params__, kwargs)
         out = self.message(**msg_kwargs)
@@ -114,8 +118,8 @@ class RGCN2(MessagePassing):
         else:
             idx1 = kwargs['edge_type'].bool()
             idx2 = (1 - kwargs['edge_type']).bool()
-            out1 = self.aggregate(out[idx1, :], kwargs['index'][idx1], kwargs['dim_size'])
-            out2 = self.aggregate(out[idx2, :], kwargs['index'][idx2], kwargs['dim_size'])
+            out1 = self.aggregate(out[idx1, :], kwargs['index'][idx1], None, kwargs['dim_size'])
+            out2 = self.aggregate(out[idx2, :], kwargs['index'][idx2], None, kwargs['dim_size'])
             # print(out1.shape)
             # print(out2.shape)
             out = torch.cat([out1, out2], 1)
@@ -126,6 +130,17 @@ class RGCN2(MessagePassing):
         out = self.update(out, **update_kwargs)
 
         return out
+
+    # def aggregate(self, inputs, index, dim_size):  # pragma: no cover
+    #     r"""Aggregates messages from neighbors as
+    #     :math:`\square_{j \in \mathcal{N}(i)}`.
+
+    #     By default, delegates call to scatter functions that support
+    #     "add", "mean" and "max" operations specified in :meth:`__init__` by
+    #     the :obj:`aggr` argument.
+    #     """
+
+    #     return scatter_(self.aggr, inputs, index, self.node_dim, dim_size)
 
     def message(self, x_j, edge_index_j, edge_type, edge_norm):
         w = torch.matmul(self.att, self.basis.view(self.num_bases, -1))

@@ -5,12 +5,12 @@ from src.data.data_loader import EmbeddingData
 
 
 def test_embedding(train_z, train_y, test_z, test_y, solver='lbfgs',
-                   multi_class='ovr', *args, **kwargs):
+                   multi_class='ovr', seed=None, *args, **kwargs):
     r"""Evaluates latent space quality via a logistic(?) regression downstream
     task."""
     z = train_z.detach().cpu().numpy()
     y = train_y.detach().cpu().numpy()
-    logreg = LogisticRegression(solver=solver, multi_class=multi_class, n_jobs=1, *args, **kwargs)
+    logreg = LogisticRegression(solver=solver, multi_class=multi_class, random_state=seed, n_jobs=1, *args, **kwargs)
     clf = logreg.fit(z, y)
     return clf.score(test_z.detach().cpu().numpy(),
                      test_y.detach().cpu().numpy())
@@ -32,7 +32,7 @@ def eval_method(data, num_splits=100,
 
 
 def test_method(data, num_splits=100,
-                train_examples = 20, val_examples = 30):
+                train_examples = 20, val_examples = 30,seed=None):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     z = data[0].x
     z = z.to(device)
@@ -41,7 +41,7 @@ def test_method(data, num_splits=100,
         split = NetworkSplitShchur(data, train_examples_per_class=train_examples,early_examples_per_class=0,
                  val_examples_per_class=val_examples, split_seed=i)
         ts = test_embedding(z[split.train_mask], data[0].y[split.train_mask],
-                            z[split.test_mask], data[0].y[split.test_mask], max_iter=100)
+                            z[split.test_mask], data[0].y[split.test_mask], max_iter=100,seed=seed)
         tests.append(ts)
     return tests
 

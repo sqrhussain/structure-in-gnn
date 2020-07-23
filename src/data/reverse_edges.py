@@ -33,5 +33,5 @@ def flip_edges(dataset,percentage=10,seed=0):
 if __name__ == '__main__':
     datasets = 'cora citeseer pubmed cora_full twitter webkb'.split()
     for dataset in datasets:
-        for percentage in range(10,101,10):
+        for percentage in range(10,51,10):
             flip_edges(dataset,percentage)

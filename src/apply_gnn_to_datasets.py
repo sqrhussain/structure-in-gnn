@@ -1,8 +1,9 @@
 from src.evaluation.gnn_evaluation_module import eval_gnn
 from src.models.gat_models import MonoGAT#, BiGAT, TriGAT
 from src.models.rgcn_models import MonoRGCN, RGCN2
+from src.models.appnp_model import MonoAPPNPModel
 from src.models.multi_layered_model import MonoModel#, BiModel, TriModel
-from torch_geometric.nn import GCNConv, SAGEConv, GATConv, RGCNConv
+from torch_geometric.nn import GCNConv, SAGEConv, GATConv, RGCNConv, SGConv, APPNP
 from src.data.data_loader import GraphDataset
 import warnings
 import pandas as pd
@@ -10,7 +11,7 @@ import os
 import argparse
 def parse_args():
 
-    parser = argparse.ArgumentParser(description="Test accuracy for GCN/SAGE/GAT/RGCN")
+    parser = argparse.ArgumentParser(description="Test accuracy for GCN/SAGE/GAT/RGCN/SGC/APPNP")
     parser.add_argument('--size',
                         type=int,
                         default=96,
@@ -39,6 +40,19 @@ def parse_args():
                         type=bool,
                         default=False,
                         help='Evaluating with flipped edges? Default is False.')
+    parser.add_argument('--removed_hubs',
+                        type=bool,
+                        default=False,
+                        help='Evaluating with removed hubs? Default is False.')
+    parser.add_argument('--added_2hop_edges',
+                        type=bool,
+                        default=False,
+                        help='Evaluating with added 2-hop edges? Default is False.')
+    parser.add_argument('--label_sbm',
+                        type=bool,
+                        default=False,
+                        help='Evaluating with SBMs created from labels? Default is False.')
+
     parser.add_argument('--heads',
                         type=int,
                         default=4,
@@ -85,7 +99,7 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-name2conv = {'gcn': GCNConv, 'sage': SAGEConv, 'gat': GATConv, 'rgcn': RGCNConv, 'rgcn2':RGCN2}
+name2conv = {'gcn': GCNConv, 'sage': SAGEConv, 'gat': GATConv, 'rgcn': RGCNConv, 'rgcn2':RGCN2, 'sgc':SGConv, 'appnp':APPNP}
 
 def eval_archs_gat(dataset, channel_size, dropout, lr, wd, heads,attention_dropout,runs,splits,train_examples,val_examples, models=[MonoGAT],isDirected = False):
     if isDirected:
@@ -103,6 +117,10 @@ def eval_archs_gcn(dataset, conv, channel_size, dropout, lr, wd, runs,splits,tra
                       train_examples = train_examples, val_examples = val_examples)
 
 
+def eval_archs_appnp(dataset, conv, channel_size, dropout, lr, wd, runs,splits,train_examples,val_examples, models=[MonoAPPNPModel]):
+    return eval_gnn(dataset, conv, channel_size, dropout, lr, wd, heads=1,attention_dropout=0.3, # dummy values for heads and attention_dropout
+                      models=models, num_runs=runs, num_splits=splits,test_score=True,
+                      train_examples = train_examples, val_examples = val_examples)
 
 def eval_archs_rgcn(dataset, conv, channel_size, dropout, lr, wd, runs,splits,train_examples,val_examples, models=[MonoRGCN]):
     return eval_gnn(dataset, conv, channel_size, dropout, lr, wd, heads=1,attention_dropout=0.3,  # dummy values for heads and attention_dropout
@@ -116,6 +134,8 @@ def eval(model, dataset, channel_size, dropout, lr, wd, heads, attention_dropout
         return eval_archs_gat(dataset, channel_size, dropout, lr, wd, heads, attention_dropout, splits=splits, runs=runs, train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
     elif model == 'rgcn' or model == 'rgcn2':
         return eval_archs_rgcn(dataset, name2conv[model], channel_size, dropout, lr, wd, splits=splits, runs=runs, train_examples = train_examples, val_examples = val_examples)
+    elif model == 'appnp':
+        return eval_archs_appnp(dataset, name2conv[model], channel_size, dropout, lr, wd, splits=splits, runs=runs, train_examples = train_examples, val_examples = val_examples)
     else:
         return eval_archs_gcn(dataset, name2conv[model], channel_size, dropout, lr, wd, splits=splits, runs=runs, train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
 
@@ -132,12 +152,47 @@ def eval_original(model, dataset_name, directionality, size, dropout, lr, wd, he
                   train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
     return df_cur
 
+
 def eval_random(model, dataset_name, directionality, size, dropout, lr, wd, heads,attention_dropout,
-        splits, runs, train_examples, val_examples):
+        splits, runs, train_examples, val_examples, random_inits):
     isDirected = (directionality != 'undirected')
     isReversed = (directionality == 'reversed')
-    dataset = GraphDataset(f'data/tmp/{dataset_name}{("_" + directionality) if isDirected else ""}-random', dataset_name,
-                           f'data/graphs/random/{dataset_name}/{dataset_name}.cites',
+    df_val = pd.DataFrame()
+    for i in range(random_inits):
+        dataset = GraphDataset(f'data/tmp/{dataset_name}{("_" + directionality) if isDirected else ""}-random{i}', dataset_name,
+                             f'data/graphs/random/{dataset_name}/{dataset_name}_{i}.cites',
+                             f'data/graphs/processed/{dataset_name}/{dataset_name}.content',
+                             directed=isDirected, reverse=isReversed)
+        df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr, splits=splits, runs=runs,
+                      dropout=dropout, wd=wd, heads=heads,attention_dropout=attention_dropout,
+                      train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
+        df_cur['random_num'] = i
+        df_val = pd.concat([df_val, df_cur])
+    return df_val
+
+def eval_erdos(model, dataset_name, directionality, size, dropout, lr, wd, heads,attention_dropout,
+        splits, runs, train_examples, val_examples, erdos_inits):
+    isDirected = (directionality != 'undirected')
+    isReversed = (directionality == 'reversed')
+    df_val = pd.DataFrame()
+    for i in range(erdos_inits):
+        dataset = GraphDataset(f'data/tmp/{dataset_name}{("_" + directionality) if isDirected else ""}-erdos{i}', dataset_name,
+                             f'data/graphs/erdos/{dataset_name}/{dataset_name}_{i}.cites',
+                             f'data/graphs/processed/{dataset_name}/{dataset_name}.content',
+                             directed=isDirected, reverse=isReversed)
+        df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr, splits=splits, runs=runs,
+                      dropout=dropout, wd=wd, heads=heads,attention_dropout=attention_dropout,
+                      train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
+        df_cur['erdos_num'] = i
+        df_val = pd.concat([df_val, df_cur])
+    return df_val
+
+def eval_label_sbm(model, dataset_name, directionality, size, dropout, lr, wd, heads,attention_dropout,
+        splits, runs, train_examples, val_examples,hubs_experiment):
+    isDirected = (directionality != 'undirected')
+    isReversed = (directionality == 'reversed')
+    dataset = GraphDataset(f'data/tmp/{dataset_name}{("_" + directionality) if isDirected else ""}-label_sbm_{hubs_experiment}', dataset_name,
+                           f'data/graphs/label_sbm/{dataset_name}/{dataset_name}_{hubs_experiment}.cites',
                            f'data/graphs/processed/{dataset_name}/{dataset_name}.content',
                            directed=isDirected, reverse=isReversed)
     df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr, splits=splits, runs=runs,
@@ -198,6 +253,47 @@ def eval_flipped(model, dataset_name, directionality, size, dropout, lr, wd, hea
         df_cur['percentage'] = i
         df_val = pd.concat([df_val, df_cur])
     return df_val
+
+def eval_removed_hubs(model, dataset_name, directionality, size, dropout, lr, wd, heads,attention_dropout,
+        splits, runs, train_examples, val_examples, percentages=[1,2,4,8]):
+    print(percentages)
+    isDirected = (directionality != 'undirected')
+    isReversed = (directionality == 'reversed')
+    df_val = pd.DataFrame()
+    for i in percentages:
+        print(f'data/graphs/processed/{dataset_name}/{dataset_name}.content')
+        dataset = GraphDataset(f'data/tmp/{dataset_name}{("_" + directionality) if isDirected else ""}-removed-hubs{i}', dataset_name,
+                               f'data/graphs/removed_hubs/{dataset_name}/{dataset_name}_{i:02}.cites',
+                               f'data/graphs/processed/{dataset_name}/{dataset_name}.content',
+                               directed=isDirected, reverse=isReversed)
+        df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr, splits=splits, runs=runs,
+                      dropout=dropout, wd=wd, heads=heads,attention_dropout=attention_dropout,
+                      train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
+        df_cur['percentage'] = i
+        df_val = pd.concat([df_val, df_cur])
+    return df_val
+
+def eval_added_2hop_edges(model, dataset_name, directionality, size, dropout, lr, wd, heads,attention_dropout,
+        splits, runs, train_examples, val_examples, percentages=[1,2,4,8,16,32,64,128,256,512]):
+    print(percentages)
+    isDirected = (directionality != 'undirected')
+    isReversed = (directionality == 'reversed')
+    df_val = pd.DataFrame()
+    for i in percentages:
+        print(f'data/graphs/processed/{dataset_name}/{dataset_name}.content')
+        network_path = f'data/graphs/added_2hop_edges/{dataset_name}/{dataset_name}_{i:02}.cites'
+        if not os.path.exists(network_path):
+            continue
+        dataset = GraphDataset(f'data/tmp/{dataset_name}{("_" + directionality) if isDirected else ""}-added-2hops{i}', dataset_name,
+                               network_path,
+                               f'data/graphs/processed/{dataset_name}/{dataset_name}.content',
+                               directed=isDirected, reverse=isReversed)
+        df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr, splits=splits, runs=runs,
+                      dropout=dropout, wd=wd, heads=heads,attention_dropout=attention_dropout,
+                      train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
+        df_cur['percentage'] = i
+        df_val = pd.concat([df_val, df_cur])
+    return df_val
     
 if __name__ == '__main__':
     warnings.filterwarnings('ignore')
@@ -230,6 +326,18 @@ if __name__ == '__main__':
                 args.splits, args.runs, args.train_examples, args.val_examples, args.sbm_inits)
     elif args.flipped:
         df_cur = eval_flipped(args.model, args.dataset, args.directionality, args.size, args.dropout, args.lr, args.wd,
+                args.heads, args.attention_dropout,
+                args.splits, args.runs, args.train_examples, args.val_examples)
+    elif args.removed_hubs:
+        df_cur = eval_removed_hubs(args.model, args.dataset, args.directionality, args.size, args.dropout, args.lr, args.wd,
+                args.heads, args.attention_dropout,
+                args.splits, args.runs, args.train_examples, args.val_examples)
+    elif args.added_2hop_edges:
+        df_cur = eval_added_2hop_edges(args.model, args.dataset, args.directionality, args.size, args.dropout, args.lr, args.wd,
+                args.heads, args.attention_dropout,
+                args.splits, args.runs, args.train_examples, args.val_examples)
+    elif  args.label_sbm:
+        df_cur = eval_label_sbm(args.model, args.dataset, args.directionality, args.size, args.dropout, args.lr, args.wd,
                 args.heads, args.attention_dropout,
                 args.splits, args.runs, args.train_examples, args.val_examples)
     else:

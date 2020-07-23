@@ -1,4 +1,5 @@
-from src.apply_gnn_to_datasets import eval_original, eval_conf, eval_sbm, eval_random, eval_flipped
+from src.apply_gnn_to_datasets import eval_original, eval_conf, eval_sbm
+from src.apply_gnn_to_datasets import eval_random, eval_erdos, eval_flipped, eval_removed_hubs, eval_added_2hop_edges,eval_label_sbm
 import argparse
 import pandas as pd
 import os
@@ -7,7 +8,7 @@ import numpy as np
 warnings.filterwarnings("ignore")
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Test accuracy for GCN/SAGE/GAT/RGCN")
+    parser = argparse.ArgumentParser(description="Main GNN training script.")
 
     parser.add_argument('--conf',
                         type=bool,
@@ -20,11 +21,31 @@ def parse_args():
     parser.add_argument('--random',
                         type=bool,
                         default=False,
-                        help='Evaluating on a completely random graph?. Default is False.')
+                        help='Evaluating on a completely random d-regular graph?. Default is False.')
+    parser.add_argument('--erdos',
+                        type=bool,
+                        default=False,
+                        help='Evaluating on a completely random Erdos-Renyi graph?. Default is False.')
+    parser.add_argument('--label_sbm',
+                        type=bool,
+                        default=False,
+                        help='Evaluating on a completely label_sbm graph?. Default is False.')
     parser.add_argument('--flipped',
                         type=bool,
                         default=False,
                         help='Evaluating with flipped edges? Default is False.')
+    parser.add_argument('--removed_hubs',
+                        type=bool,
+                        default=False,
+                        help='Evaluating with removed hubs? Default is False.')
+    parser.add_argument('--added_2hop_edges',
+                        type=bool,
+                        default=False,
+                        help='Evaluating with added 2-hop edges? Default is False.')
+                        
+    parser.add_argument('--hubs_experiment',
+                        default='weak',
+                        help='hubs experiment type (loca_hubs, global_hubs, local_edges, global_edges). Default is None.')
 
     parser.add_argument('--datasets',
                         nargs='+',
@@ -34,12 +55,12 @@ def parse_args():
                         help='models to evaluate, e.g., --models gcn sage gat')
     parser.add_argument('--splits',
                         type=int,
-                        default=100,
-                        help='Number of random train/validation/test splits. Default is 100.')
+                        default=20,
+                        help='Number of random train/validation/test splits. Default is 20.')
     parser.add_argument('--runs',
                         type=int,
-                        default=20,
-                        help='Number of random initializations of the model. Default is 20.')
+                        default=5,
+                        help='Number of random initializations of the model. Default is 5.')
 
     parser.add_argument('--train_examples',
                         type=int,
@@ -80,8 +101,8 @@ def extract_hyperparams(df_hyper, dataset, model):
     if 'attention_dropout' in df_hyper and df_hyper.attention_dropout is not None and not np.isnan(df_hyper.attention_dropout):
         attdrop = df_hyper.attention_dropout
     size = int(df_hyper.ch)
-    # if dataset == 'pubmed' and model == 'rgcn':
-    #     size = 12
+    if dataset == 'cora_full' and model == 'rgcn':
+        size = 1
     return size, df_hyper.dropout, df_hyper.lr, df_hyper.wd, int(df_hyper.heads), attdrop
 
 if __name__ == '__main__':
@@ -93,14 +114,22 @@ if __name__ == '__main__':
         for dataset in args.datasets:
             df_hyper = df_hyper.append(model_selection(model,dataset))
     print(df_hyper)
+    hubs_experiment = '_label_sbm'
+    if args.hubs_experiment is not None:
+        hubs_experiment += '_' + args.hubs_experiment 
     for dataset in args.datasets:
         for directionality in args.directionalities:
             for model in args.models:
                 print(f'{dataset}, {model}, {directionality}')
-                val_out = f'reports/results/test_acc/{model}_{dataset}{"_conf" if args.conf else ""}' \
+                val_out = f'reports/results/test_acc/{model}_{dataset}'\
+                          f'{"_conf" if args.conf else ""}'\
                           f'{"_sbm" if args.sbm else ""}'\
                           f'{"_random" if args.random else ""}'\
+                          f'{"_erdos" if args.erdos else ""}'\
+                          f'{hubs_experiment if args.label_sbm else ""}'\
                           f'{"_flipped" if args.flipped else ""}'\
+                          f'{"_removed_hubs" if args.removed_hubs else ""}'\
+                          f'{"_added_2hop_edges" if args.added_2hop_edges else ""}'\
                           f'{("_" + directionality) if (directionality!="undirected") else ""}.csv'
                 if os.path.exists(val_out):
                     df_val = pd.read_csv(val_out)
@@ -109,6 +138,7 @@ if __name__ == '__main__':
                         columns='conv arch ch dropout lr wd heads attention_dropout splits inits val_accs val_avg val_std'
                                 ' test_accs test_avg test_std stopped elapsed'.split())
                 size, dropout, lr, wd, heads, attention_dropout = extract_hyperparams(df_hyper,dataset,model)
+                print(size)
                 if args.sbm:
                     df_cur = eval_sbm(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
                              args.train_examples, args.val_examples, 10)
@@ -117,9 +147,21 @@ if __name__ == '__main__':
                              args.train_examples, args.val_examples, 10)
                 elif args.random:
                     df_cur = eval_random(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
-                             args.train_examples, args.val_examples)
+                             args.train_examples, args.val_examples, 10)
+                elif args.erdos:
+                    df_cur = eval_erdos(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
+                             args.train_examples, args.val_examples, 10)
+                elif args.label_sbm:
+                    df_cur = eval_label_sbm(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
+                             args.train_examples, args.val_examples, args.hubs_experiment)
                 elif args.flipped:
                     df_cur = eval_flipped(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
+                             args.train_examples, args.val_examples)
+                elif args.removed_hubs:
+                    df_cur = eval_removed_hubs(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
+                             args.train_examples, args.val_examples)
+                elif args.added_2hop_edges:
+                    df_cur = eval_added_2hop_edges(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
                              args.train_examples, args.val_examples)
                 else:
                     df_cur = eval_original(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,

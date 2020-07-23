@@ -81,13 +81,13 @@ def contains(df_val,ch,lr,dropout,wd):
 def contains_gat(df_val,ch,lr,dropout,wd,heads,attention_dropout):
     return ((df_val['ch']==ch) & (df_val['lr']==lr) & (df_val['dropout']==dropout)  & (df_val['wd']==wd) & (df_val['heads']==heads) & (df_val['attention_dropout']==attention_dropout)).any()
 
-for ch in [96]:
-    for lr in [1e-2]:
-        for dropout in [0.4]:
-            for wd in [1e-2]:
+for ch in [32]:
+    for lr in [1e-3,1e-2,1e-1]:
+        for dropout in [0.2,0.4,0.6,0.8]:
+            for wd in [1e-4,1e-3,1e-2]:
                 if args.model == 'gat':
                     for heads in [4]:
-                        for attention_dropout in [0.2,0.4,0.6,0.8]:
+                       # for attention_dropout in [0.2,0.4,0.6,0.8]:
                             if contains_gat(df_val,ch,lr,dropout,wd,heads,attention_dropout):
                                 print('already calculated!')
                                 continue
