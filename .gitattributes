@@ -1,0 +1,2 @@
+*.content filter=lfs diff=lfs merge=lfs -text
+*.emb filter=lfs diff=lfs merge=lfs -text
