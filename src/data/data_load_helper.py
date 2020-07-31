@@ -17,6 +17,7 @@ def read_network(features_path,edge_path,directed,reverse, convert_to_BoW = Fals
     cnt = 0
     class_cnt = 0
     print('Read features: RUNNING')
+    print(f'file {features_path}')
     with open(features_path, 'r') as f:
         for line in f:
             info = line.split()
@@ -46,8 +47,9 @@ def read_network(features_path,edge_path,directed,reverse, convert_to_BoW = Fals
     df.columns = ['target']
     
     print('Read edges: RUNNING')
+    print(f'file {edge_path}')
+
     # 4. Read edges
-    
     with open(edge_path) as f:
         G1 = nx.DiGraph([[rename[line.split()[0]],rename[line.split()[1]]]
                          for line in f
@@ -56,6 +58,9 @@ def read_network(features_path,edge_path,directed,reverse, convert_to_BoW = Fals
         G2 = nx.DiGraph([[rename[line.split()[1]],rename[line.split()[0]]]
                          for line in f
                          if line.split()[0] in rename and line.split()[1] in rename])
+
+    print(len(G1.edges()))
+    print(len(G2.edges()))
     G1.remove_edges_from(nx.selfloop_edges(G1))
     G2.remove_edges_from(nx.selfloop_edges(G2))
     row = []
@@ -66,6 +71,7 @@ def read_network(features_path,edge_path,directed,reverse, convert_to_BoW = Fals
     if reverse or not directed:
         row = row + [e[0] for e in G2.edges()]
         col = col + [e[1] for e in G2.edges()]
+
     print('Read edges: DONE')
     print(f' {len(row)} edges')
     edge_index = torch.stack([torch.tensor(row), torch.tensor(col)], dim=0)

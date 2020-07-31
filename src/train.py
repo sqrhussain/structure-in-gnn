@@ -1,5 +1,6 @@
 from src.apply_gnn_to_datasets import eval_original, eval_conf, eval_sbm
-from src.apply_gnn_to_datasets import eval_random, eval_erdos, eval_flipped, eval_removed_hubs, eval_added_2hop_edges,eval_label_sbm
+from src.apply_gnn_to_datasets import eval_random, eval_erdos, eval_flipped, eval_removed_hubs, eval_added_2hop_edges
+from src.apply_gnn_to_datasets import eval_label_sbm, eval_injected_edges
 import argparse
 import pandas as pd
 import os
@@ -30,6 +31,10 @@ def parse_args():
                         type=bool,
                         default=False,
                         help='Evaluating on a completely label_sbm graph?. Default is False.')
+    parser.add_argument('--injected_edges',
+                        type=bool,
+                        default=False,
+                        help='Evaluating on a completely injected_edges graph?. Default is False.')
     parser.add_argument('--flipped',
                         type=bool,
                         default=False,
@@ -93,7 +98,7 @@ def model_selection(model, dataset):
     return df
 
 def extract_hyperparams(df_hyper, dataset, model):
-    if model == 'gat' and dataset == 'cora_full':
+    if model == 'gat' and dataset in 'cora_full ':
         dataset = 'pubmed' # take pubmed hyperparams and apply them to cora_full
     print(df_hyper)
     df_hyper = df_hyper[(df_hyper.dataset == dataset) & (df_hyper.conv == model)].reset_index().loc[0]
@@ -114,7 +119,7 @@ if __name__ == '__main__':
         for dataset in args.datasets:
             df_hyper = df_hyper.append(model_selection(model,dataset))
     print(df_hyper)
-    hubs_experiment = '_label_sbm'
+    hubs_experiment = '_label_sbm' if args.label_sbm else '_injected_edges'
     if args.hubs_experiment is not None:
         hubs_experiment += '_' + args.hubs_experiment 
     for dataset in args.datasets:
@@ -127,6 +132,7 @@ if __name__ == '__main__':
                           f'{"_random" if args.random else ""}'\
                           f'{"_erdos" if args.erdos else ""}'\
                           f'{hubs_experiment if args.label_sbm else ""}'\
+                          f'{hubs_experiment if args.injected_edges else ""}'\
                           f'{"_flipped" if args.flipped else ""}'\
                           f'{"_removed_hubs" if args.removed_hubs else ""}'\
                           f'{"_added_2hop_edges" if args.added_2hop_edges else ""}'\
@@ -151,6 +157,9 @@ if __name__ == '__main__':
                 elif args.erdos:
                     df_cur = eval_erdos(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
                              args.train_examples, args.val_examples, 10)
+                elif args.injected_edges:
+                    df_cur = eval_injected_edges(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
+                             args.train_examples, args.val_examples, 5, range(100,2001,100), args.hubs_experiment)
                 elif args.label_sbm:
                     df_cur = eval_label_sbm(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
                              args.train_examples, args.val_examples, args.hubs_experiment)

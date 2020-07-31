@@ -162,15 +162,22 @@ def create_sbm_graph(graph, block_sizes, edge_probabilities, node_lists, output_
     nx.write_edgelist(sbm, output_path)
 
 
-def create_multiple_sbm_graphs(graph_path, community_path, output_prefix, output_suffix='.cites', inits=10):
-
-    graph, node_mappings, reverse_node_mappings = create_graph_and_node_mappings_from_file(graph_path)
+def load_communities(community_path,graph,reverse_node_mappings):
     # community detection
     if not os.path.exists(community_path):
+        print('Detecting communities')
         node_communities_louvain = create_louvain_communities_dict(graph, reverse_node_mappings)
         store_in_file(node_communities_louvain, community_path)
     else:
         node_communities_louvain = load_from_file(community_path)
+    return node_communities_louvain
+
+def create_multiple_sbm_graphs(graph_path, community_path, output_prefix, output_suffix='.cites', inits=10):
+
+    graph, node_mappings, reverse_node_mappings = create_graph_and_node_mappings_from_file(graph_path)
+    # community detection
+    node_communities_louvain = load_communities(community_path,graph,reverse_node_mappings)
+    
     # build stochastic matrix
     block_sizes, edge_probabilities, node_lists = build_stochastic_block_matrix(graph, node_mappings, reverse_node_mappings, node_communities_louvain)
     for i in range(inits):
