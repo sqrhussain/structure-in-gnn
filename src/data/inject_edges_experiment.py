@@ -19,6 +19,11 @@ def parse_args():
                         type=int,
                         default=5,
                         help='Number of random initializations. Default is 5.')
+    parser.add_argument('--gen_sbm',
+                        type=bool,
+                        default=False,
+                        help='Should the graph be generated from original labels? Default is False, which means we inject edges to the original graph.')
+
     return parser.parse_args()
 
 def load_labels(path):
@@ -37,7 +42,7 @@ def load_labels(path):
             label[s[0]] = label_mapping[s[-1]]
     return label,reverse_label_mapping
 
-	
+    
 
 # def label_stochastic_matrix(graph_path, labels_path):
 #     graph, node_mappings, reverse_node_mappings = create_graph_and_node_mappings_from_file(graph_path)
@@ -52,13 +57,14 @@ def load_labels(path):
 
 
 def get_hubs(G):
-	# TODO: define a way to find the constant instead of always using 0.01
-	nodes = sorted(G.degree, key=lambda x: x[1], reverse=True)
-	nodes = nodes[:int(np.ceil(0.01*len(nodes)))]
-	return [x[0] for x in nodes]
+    # TODO: define a way to find the constant instead of always using 0.01
+    nodes = sorted(G.degree, key=lambda x: x[1], reverse=True)
+    nodes = nodes[:int(np.ceil(0.01*len(nodes)))]
+    return [x[0] for x in nodes]
 
 def build_label_based_sbm(graph, node_mappings, reverse_node_mappings, labels):
     block_sizes, edge_probabilities, node_lists = build_stochastic_block_matrix(graph, node_mappings, reverse_node_mappings, labels)
+    print(edge_probabilities)
     n = len(block_sizes)
     avg_node_degree = 2*len(graph.edges)/len(graph.nodes)
     diag = np.diag((avg_node_degree*np.array(block_sizes)/2)/np.array(block_sizes)/np.array(block_sizes))
@@ -74,11 +80,22 @@ def create_label_based_sbm(graph_path, labels, output_path, seed=0):
     create_sbm_graph(graph, block_sizes, edge_probabilities, node_lists, output_path, seed, reverse_node_mappings)
     return edge_probabilities
 
+def get_graph(graph_path, labels, gen_sbm, seed):
+    if gen_sbm:
+        graph, node_mappings, reverse_node_mappings = create_graph_and_node_mappings_from_file(graph_path)
+        edge_probabilities, block_sizes, node_lists = build_label_based_sbm(graph, node_mappings, reverse_node_mappings, labels)
+
+        sbm = stochastic_block_model(block_sizes, edge_probabilities, node_lists, seed, True, False)
+        sbm = nx.relabel_nodes(sbm, reverse_node_mappings)
+        graph = sbm
+    else:
+        graph = nx.read_edgelist(graph_path, create_using=nx.DiGraph)
+    return graph
 
 
-def create_label_based_sbm_local_hubs(graph_path, labels, output_path, edges_to_add, seed=0):
-    graph = nx.read_edgelist(graph_path, create_using=nx.DiGraph)
-    
+def create_label_based_sbm_local_hubs(graph_path, labels, output_path, edges_to_add, seed=0,gen_sbm=False):
+    graph = get_graph(graph_path, labels, gen_sbm, seed)
+
     label_id_to_node_id = create_community_id_to_node_id(labels)
     labels_list = list(label_id_to_node_id.keys())
 
@@ -99,28 +116,9 @@ def create_label_based_sbm_local_hubs(graph_path, labels, output_path, edges_to_
     nx.write_edgelist(graph, output_path)
 
     return graph
-    # # constants to be defined later
-    # hubs_ratio = 0.01
-    # hubs_connectivity = 0.30
-    
-    # # add local hubs
-    # edges = []
-    # for label in label_id_to_node_id:
-    #     nodes = label_id_to_node_id[label]
-    #     # pick a couple of nodes
-    #     n_hubs = int(len(nodes) * hubs_ratio) + 1
-    #     m_hubs = int(len(nodes) * hubs_connectivity) + 1
-    #     hubs = np.random.choice(nodes,n_hubs)
-        
-    #     for hub in hubs:
-    #         neighbors = np.random.choice(nodes,m_hubs)
-    #         edges = edges + [[hub,u] for u in neighbors]
-    # sbm.add_edges_from(edges)
-    # nx.write_edgelist(sbm, output_path)
-    # return edge_probabilities
 
-def create_label_based_sbm_local_edges(graph_path, labels, output_path, edges_to_add, seed=0):
-    graph = nx.read_edgelist(graph_path, create_using=nx.DiGraph)
+def create_label_based_sbm_local_edges(graph_path, labels, output_path, edges_to_add, seed=0,gen_sbm=False):
+    graph = get_graph(graph_path, labels, gen_sbm, seed)
     
     label_id_to_node_id = create_community_id_to_node_id(labels)
     labels_list = list(label_id_to_node_id.keys())
@@ -145,8 +143,8 @@ def create_label_based_sbm_local_edges(graph_path, labels, output_path, edges_to
 
 
 
-def create_label_based_sbm_global_hubs(graph_path, labels, output_path, edges_to_add, seed=0):
-    graph = nx.read_edgelist(graph_path, create_using=nx.DiGraph)
+def create_label_based_sbm_global_hubs(graph_path, labels, output_path, edges_to_add, seed=0,gen_sbm=False):
+    graph = get_graph(graph_path, labels, gen_sbm, seed)
         
     label_id_to_node_id = create_community_id_to_node_id(labels)
     labels_list = label_id_to_node_id.keys()
@@ -162,8 +160,8 @@ def create_label_based_sbm_global_hubs(graph_path, labels, output_path, edges_to
     return graph
 
 
-def create_label_based_sbm_global_edges(graph_path, labels, output_path, edges_to_add, seed=0):
-    graph = nx.read_edgelist(graph_path, create_using=nx.DiGraph)
+def create_label_based_sbm_global_edges(graph_path, labels, output_path, edges_to_add, seed=0,gen_sbm=False):
+    graph = get_graph(graph_path, labels, gen_sbm, seed)
 
     label_id_to_node_id = create_community_id_to_node_id(labels)
     labels_list = label_id_to_node_id.keys()
@@ -187,24 +185,30 @@ def main():
     # labels = load_communities(labels_path)
     edges = range(100,2001,100)
     for dataset in args.datasets:
-    	for edge in edges:
-    		for seed in range(args.runs):
-    			graph_path = f'data/graphs/processed/{dataset}/{dataset}.cites'
-    			output_dir = f'data/graphs/injected_edges/{dataset}'
-    			labels_path = f'data/community_id_dicts/{dataset}/{dataset}_louvain.pickle'
-    			if not os.path.exists(output_dir):
-    				os.mkdir(output_dir)
-    			output_path = output_dir + f'/{dataset}_local_hubs_{edge}_{seed}.cites'
-    			create_label_based_sbm_local_hubs(graph_path, load_communities(labels_path), output_path, edges_to_add=edge, seed=seed)
+        for edge in edges:
+            for seed in range(args.runs):
+                graph_path = f'data/graphs/processed/{dataset}/{dataset}.cites'
+                if args.gen_sbm:
+                    labels_path = f'data/graphs/processed/{dataset}/{dataset}.content'
+                    labels,_ = load_labels(labels_path)
+                    output_dir = f'data/graphs/injected_edges_sbm/{dataset}'
+                else:
+                    labels_path = f'data/community_id_dicts/{dataset}/{dataset}_louvain.pickle'
+                    labels = load_communities(labels_path)
+                    output_dir = f'data/graphs/injected_edges/{dataset}'
+                if not os.path.exists(output_dir):
+                    os.mkdir(output_dir)
+                output_path = output_dir + f'/{dataset}_local_hubs_{edge}_{seed}.cites'
+                create_label_based_sbm_local_hubs(graph_path, labels, output_path, edges_to_add=edge, seed=seed, gen_sbm=args.gen_sbm)
 
-    			output_path = output_dir + f'/{dataset}_local_edges_{edge}_{seed}.cites'
-    			create_label_based_sbm_local_edges(graph_path, load_communities(labels_path), output_path, edges_to_add=edge, seed=seed)
+                output_path = output_dir + f'/{dataset}_local_edges_{edge}_{seed}.cites'
+                create_label_based_sbm_local_edges(graph_path, labels, output_path, edges_to_add=edge, seed=seed, gen_sbm=args.gen_sbm)
 
-    			output_path = output_dir + f'/{dataset}_global_hubs_{edge}_{seed}.cites'
-    			create_label_based_sbm_global_hubs(graph_path, load_communities(labels_path), output_path, edges_to_add=edge, seed=seed)
+                output_path = output_dir + f'/{dataset}_global_hubs_{edge}_{seed}.cites'
+                create_label_based_sbm_global_hubs(graph_path, labels, output_path, edges_to_add=edge, seed=seed, gen_sbm=args.gen_sbm)
 
-    			output_path = output_dir + f'/{dataset}_global_edges_{edge}_{seed}.cites'
-    			create_label_based_sbm_global_edges(graph_path, load_communities(labels_path), output_path, edges_to_add=edge, seed=seed)
+                output_path = output_dir + f'/{dataset}_global_edges_{edge}_{seed}.cites'
+                create_label_based_sbm_global_edges(graph_path, labels, output_path, edges_to_add=edge, seed=seed, gen_sbm=args.gen_sbm)
 
 if __name__ == '__main__':
-	main()
+    main()

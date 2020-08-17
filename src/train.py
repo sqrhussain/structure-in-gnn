@@ -1,6 +1,6 @@
 from src.apply_gnn_to_datasets import eval_original, eval_conf, eval_sbm
 from src.apply_gnn_to_datasets import eval_random, eval_erdos, eval_flipped, eval_removed_hubs, eval_added_2hop_edges
-from src.apply_gnn_to_datasets import eval_label_sbm, eval_injected_edges
+from src.apply_gnn_to_datasets import eval_label_sbm, eval_injected_edges, eval_injected_edges_sbm
 import argparse
 import pandas as pd
 import os
@@ -35,6 +35,10 @@ def parse_args():
                         type=bool,
                         default=False,
                         help='Evaluating on a completely injected_edges graph?. Default is False.')
+    parser.add_argument('--injected_edges_sbm',
+                        type=bool,
+                        default=False,
+                        help='Evaluating on a completely injected_edges_sbm graph?. Default is False.')
     parser.add_argument('--flipped',
                         type=bool,
                         default=False,
@@ -83,22 +87,27 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+datasets_similar_to_pubmed = 'cora_full ms_academic_cs ms_academic_phy'.split()
+
 def model_selection(model, dataset):
-    if model == 'gat' and dataset == 'cora_full':
+    if model == 'gat' and dataset in datasets_similar_to_pubmed:
         dataset = 'pubmed' # take pubmed hyperparams and apply them to cora_full
     # if dataset == 'citeseer':
     #     dataset = 'cora' # take cora hyperparams and apply them to citeseer
     filename = f'reports/results/eval/{model}_val_{dataset}_undirected.csv'
     if not os.path.exists(filename):
         filename = f'reports/results/eval/{model}.csv'
+
+    print(f'reading hyperparams from file {filename}')
     df = pd.read_csv(filename)
+    df = df[df.arch == 'M']
     df = df[df.val_avg == df.val_avg.max()].reset_index().loc[0]
     df['dataset'] = dataset
     df['conv'] = model 
     return df
 
 def extract_hyperparams(df_hyper, dataset, model):
-    if model == 'gat' and dataset in 'cora_full ':
+    if model == 'gat' and dataset in datasets_similar_to_pubmed:
         dataset = 'pubmed' # take pubmed hyperparams and apply them to cora_full
     print(df_hyper)
     df_hyper = df_hyper[(df_hyper.dataset == dataset) & (df_hyper.conv == model)].reset_index().loc[0]
@@ -119,7 +128,7 @@ if __name__ == '__main__':
         for dataset in args.datasets:
             df_hyper = df_hyper.append(model_selection(model,dataset))
     print(df_hyper)
-    hubs_experiment = '_label_sbm' if args.label_sbm else '_injected_edges'
+    hubs_experiment = '_label_sbm' if args.label_sbm else ('_injected_edges' if args.injected_edges else '_injected_edges_sbm')
     if args.hubs_experiment is not None:
         hubs_experiment += '_' + args.hubs_experiment 
     for dataset in args.datasets:
@@ -133,6 +142,7 @@ if __name__ == '__main__':
                           f'{"_erdos" if args.erdos else ""}'\
                           f'{hubs_experiment if args.label_sbm else ""}'\
                           f'{hubs_experiment if args.injected_edges else ""}'\
+                          f'{hubs_experiment if args.injected_edges_sbm else ""}'\
                           f'{"_flipped" if args.flipped else ""}'\
                           f'{"_removed_hubs" if args.removed_hubs else ""}'\
                           f'{"_added_2hop_edges" if args.added_2hop_edges else ""}'\
@@ -159,6 +169,9 @@ if __name__ == '__main__':
                              args.train_examples, args.val_examples, 10)
                 elif args.injected_edges:
                     df_cur = eval_injected_edges(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
+                             args.train_examples, args.val_examples, 5, range(100,2001,100), args.hubs_experiment)
+                elif args.injected_edges_sbm:
+                    df_cur = eval_injected_edges_sbm(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
                              args.train_examples, args.val_examples, 5, range(100,2001,100), args.hubs_experiment)
                 elif args.label_sbm:
                     df_cur = eval_label_sbm(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,

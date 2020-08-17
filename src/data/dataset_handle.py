@@ -8,6 +8,7 @@ import zipfile
 import pandas as pd
 import csv
 import numpy as np
+import json
 
 
 def create_citation_dataset(dataset_name, url, target_tmp_file, dir_path, target_processed_path,
@@ -290,11 +291,49 @@ def create_jigsaw_graph(filename):
 
 
 
+def create_wiki_cs():
+    dataset_name = 'wiki_cs'
+    url = 'https://github.com/pmernyei/wiki-cs-dataset/blob/master/dataset/data.json?raw=true'
+    dir_path = 'data/graphs/raw'
+    target_file = dir_path + '/' + dataset_name + '/data.json'
+    target_processed = 'data/graphs/processed'
+
+    raw_folder_name = dataset_name
+
+    # download dataset
+    if (url is not None) and (not os.path.exists(dir_path + '/' + dataset_name)):
+        os.mkdir(dir_path + '/' + dataset_name)
+        print(f'Downloading {url}...')
+        wget.download(url, target_file)
+        print(f'File downloaded at {target_file}!')
+    else: print(f'Directory downloaded at {dir_path}/{dataset_name} already exists!')
+
+    if not os.path.exists(f'{target_processed}/{dataset_name}'):
+        os.mkdir(f'{target_processed}/{dataset_name}')
+
+
+    graph = json.load(open (target_file, "r"))
+
+    features = graph['features']
+    labels = graph['labels']
+    links = graph['links']
+
+    with open(f'{target_processed}/{dataset_name}/{dataset_name}.cites','w') as outfile:
+        for u in range(len(links)):
+            for v in links[u]:
+                outfile.write(str(u) + ' ' + str(v) + '\n')
+
+    with open(f'{target_processed}/{dataset_name}/{dataset_name}.content','w') as outfile:
+        for u in range(len(features)):
+            outfile.write(str(u) + ' ' + ' '.join([str(f) for f in features[u]]) + ' ' + str(labels[u]) + '\n')
+
+
 
 
 
 if __name__ == '__main__':
-    create_jigsaw_graph('validation_knn_40')
+    create_wiki_cs()
+    # create_jigsaw_graph('validation_knn_40')
     # create_webkb_small()
     #create_cornell()
     #create_wisconsin()
