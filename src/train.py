@@ -1,6 +1,6 @@
 from src.apply_gnn_to_datasets import eval_original, eval_conf, eval_sbm
 from src.apply_gnn_to_datasets import eval_random, eval_erdos, eval_flipped, eval_removed_hubs, eval_added_2hop_edges
-from src.apply_gnn_to_datasets import eval_label_sbm, eval_injected_edges, eval_injected_edges_sbm
+from src.apply_gnn_to_datasets import eval_label_sbm, eval_injected_edges, eval_injected_edges_sbm, eval_injected_edges_degree_cat
 import argparse
 import pandas as pd
 import os
@@ -35,6 +35,10 @@ def parse_args():
                         type=bool,
                         default=False,
                         help='Evaluating on a completely injected_edges graph?. Default is False.')
+    parser.add_argument('--injected_edges_degree_cat',
+                        type=bool,
+                        default=False,
+                        help='Evaluating on a completely injected_edges_degree_cat graph?. Default is False.')
     parser.add_argument('--injected_edges_sbm',
                         type=bool,
                         default=False,
@@ -142,14 +146,18 @@ if __name__ == '__main__':
                           f'{"_erdos" if args.erdos else ""}'\
                           f'{hubs_experiment if args.label_sbm else ""}'\
                           f'{hubs_experiment if args.injected_edges else ""}'\
+                          f'{"_degree_cat" if args.injected_edges_degree_cat else ""}'\
                           f'{hubs_experiment if args.injected_edges_sbm else ""}'\
                           f'{"_flipped" if args.flipped else ""}'\
                           f'{"_removed_hubs" if args.removed_hubs else ""}'\
                           f'{"_added_2hop_edges" if args.added_2hop_edges else ""}'\
                           f'{("_" + directionality) if (directionality!="undirected") else ""}.csv'
+                print(f'Evaluation will be saved to {val_out}')
                 if os.path.exists(val_out):
                     df_val = pd.read_csv(val_out)
+                    print(f'File {val_out} already exists, appeding to it')
                 else:
+                    print(f'Creating file {val_out}')
                     df_val = pd.DataFrame(
                         columns='conv arch ch dropout lr wd heads attention_dropout splits inits val_accs val_avg val_std'
                                 ' test_accs test_avg test_std stopped elapsed'.split())
@@ -169,7 +177,11 @@ if __name__ == '__main__':
                              args.train_examples, args.val_examples, 10)
                 elif args.injected_edges:
                     df_cur = eval_injected_edges(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
-                             args.train_examples, args.val_examples, 5, range(100,2001,100), args.hubs_experiment)
+                             args.train_examples, args.val_examples, 5, range(6000,10001,1000), args.hubs_experiment)
+                elif  args.injected_edges_degree_cat:
+                    df_cur = eval_injected_edges_degree_cat(model, dataset, directionality, size, dropout, lr, wd,
+                            heads, attention_dropout,
+                            args.splits, args.runs, args.train_examples, args.val_examples, 5, 1000, 5)
                 elif args.injected_edges_sbm:
                     df_cur = eval_injected_edges_sbm(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
                              args.train_examples, args.val_examples, 5, range(100,2001,100), args.hubs_experiment)

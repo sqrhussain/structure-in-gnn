@@ -162,9 +162,12 @@ def create_sbm_graph(graph, block_sizes, edge_probabilities, node_lists, output_
     nx.write_edgelist(sbm, output_path)
 
 
-def load_communities(community_path,graph,reverse_node_mappings):
+def load_communities(community_path,graph=None,reverse_node_mappings=None):
     # community detection
     if not os.path.exists(community_path):
+        if graph is None or reverse_node_mappings is None:
+            print('graph or reverse_node_mappings is None')
+            raise
         print('Detecting communities')
         node_communities_louvain = create_louvain_communities_dict(graph, reverse_node_mappings)
         store_in_file(node_communities_louvain, community_path)

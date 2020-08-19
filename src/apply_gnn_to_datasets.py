@@ -217,6 +217,34 @@ def eval_injected_edges(model, dataset_name, directionality, size, dropout, lr, 
     return df_val
 
 
+def eval_injected_edges_degree_cat(model, dataset_name, directionality, size, dropout, lr, wd, heads,attention_dropout,
+        splits, runs, train_examples, val_examples, inits, num_edges, percentile):
+    isDirected = (directionality != 'undirected')
+    isReversed = (directionality == 'reversed')
+    df_val = pd.DataFrame()
+    last_edge = None
+    e = num_edges
+    hubs_experiment = 'global_edges'
+    for i in range(inits):
+      for frm in range(0,100,percentile):
+        to = frm + percentile
+        dataset = GraphDataset(f'data/tmp/{dataset_name}{("_" + directionality) if isDirected else ""}-injected_{e}_{i}_{hubs_experiment}_{frm}_to_{to}', dataset_name,
+                           f'data/graphs/injected_edges_degree_cat/{dataset_name}/{dataset_name}_{hubs_experiment}_{e}_{i}_{frm}_to_{to}.cites',
+                           f'data/graphs/processed/{dataset_name}/{dataset_name}.content',
+                           directed=isDirected, reverse=isReversed)
+        df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr, splits=splits, runs=runs,
+                      dropout=dropout, wd=wd, heads=heads,attention_dropout=attention_dropout,
+                      train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
+        df_cur['init_num'] = i
+        df_cur['injected_edges'] = e
+        df_cur['from'] = frm
+        df_cur['to'] = to
+
+        df_val = pd.concat([df_val, df_cur])
+    return df_val
+
+
+
 def eval_injected_edges_sbm(model, dataset_name, directionality, size, dropout, lr, wd, heads,attention_dropout,
         splits, runs, train_examples, val_examples, inits, num_edges, hubs_experiment):
     isDirected = (directionality != 'undirected')
@@ -394,7 +422,11 @@ if __name__ == '__main__':
     elif  args.injected_edges:
         df_cur = eval_injected_edges(args.model, args.dataset, args.directionality, args.size, args.dropout, args.lr, args.wd,
                 args.heads, args.attention_dropout,
-                args.splits, args.runs, args.train_examples, args.val_examples, 5, range(100,2001,100), args.hubs_experiment)
+                args.splits, args.runs, args.train_examples, args.val_examples, 5, range(1000,5001,1000), args.hubs_experiment)
+    elif  args.injected_edges_degree_cat:
+        df_cur = eval_injected_edges_degree_cat(args.model, args.dataset, args.directionality, args.size, args.dropout, args.lr, args.wd,
+                args.heads, args.attention_dropout,
+                args.splits, args.runs, args.train_examples, args.val_examples, 5, 500, 5)
     elif  args.injected_edges_sbm:
         df_cur = eval_injected_edges_sbm(args.model, args.dataset, args.directionality, args.size, args.dropout, args.lr, args.wd,
                 args.heads, args.attention_dropout,
