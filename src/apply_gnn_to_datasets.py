@@ -9,6 +9,9 @@ import warnings
 import pandas as pd
 import os
 import argparse
+import numpy as np
+import pickle
+
 def parse_args():
 
     parser = argparse.ArgumentParser(description="Test accuracy for GCN/SAGE/GAT/RGCN/SGC/APPNP")
@@ -244,6 +247,64 @@ def eval_injected_edges_degree_cat(model, dataset_name, directionality, size, dr
     return df_val
 
 
+def eval_injected_edges_constant_nodes(model, dataset_name, directionality, size, dropout, lr, wd, heads,attention_dropout,
+        splits, runs, train_examples, val_examples, inits, control_ratio, edges_per_node, percentile):
+    isDirected = (directionality != 'undirected')
+    isReversed = (directionality == 'reversed')
+    df_val = pd.DataFrame()
+    last_edge = None
+    hubs_experiment = 'global_edges'
+    for frm in range(0,100,percentile):
+      for i in range(inits):
+        for e in edges_per_node:
+          to = frm + percentile
+          dataset = GraphDataset(f'data/tmp/{dataset_name}{("_" + directionality) if isDirected else ""}-injected_{e}edges_{control_ratio}nodes_{i}_{hubs_experiment}_{frm}_to_{to}', dataset_name,
+                             f'data/graphs/injected_edges_constant_nodes/{dataset_name}/{dataset_name}_global_edges{e}_nodes{control_ratio:.3f}_{i}_{frm}_to_{to}.cites',
+                             f'data/graphs/processed/{dataset_name}/{dataset_name}.content',
+                             directed=isDirected, reverse=isReversed)
+          df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr, splits=splits, runs=runs,
+                        dropout=dropout, wd=wd, heads=heads,attention_dropout=attention_dropout,
+                        train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
+          df_cur['init_num'] = i
+          df_cur['edges_per_node'] = e
+          df_cur['control_ratio'] = control_ratio
+          df_cur['from'] = frm
+          df_cur['to'] = to
+
+          df_val = pd.concat([df_val, df_cur])
+    return df_val
+
+
+def eval_injected_edges_attack_target(model, dataset_name, directionality, size, dropout, lr, wd, heads,attention_dropout,
+        splits, runs, train_examples, val_examples, inits, control_ratio, edges_per_node, percentile):
+    isDirected = (directionality != 'undirected')
+    isReversed = (directionality == 'reversed')
+    df_val = pd.DataFrame()
+    last_edge = None
+    hubs_experiment = 'global_edges'
+    for atkfrm in range(0,100,percentile):
+      for tgtfrm in range(0,100,percentile):
+        for i in range(inits):
+          for e in edges_per_node:
+            atkto = atkfrm + percentile
+            tgtto = tgtfrm + percentile
+            dataset = GraphDataset(f'data/tmp/{dataset_name}{("_" + directionality) if isDirected else ""}-injected_{e}edges_{control_ratio:.3f}nodes_{i}_{hubs_experiment}_atk{atkfrm}_{atkto}_tgt{tgtfrm}_{tgtto}', dataset_name,
+                               f'data/graphs/injected_edges_attack_target/{dataset_name}/{dataset_name}_global_edges{e}_nodes{control_ratio:.3f}_{i}_atk{atkfrm}_{atkto}_tgt{tgtfrm}_{tgtto}.cites',
+                               f'data/graphs/processed/{dataset_name}/{dataset_name}.content',
+                               directed=isDirected, reverse=isReversed)
+            df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr, splits=splits, runs=runs,
+                          dropout=dropout, wd=wd, heads=heads,attention_dropout=attention_dropout,
+                          train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
+            df_cur['init_num'] = i
+            df_cur['edges_per_node'] = e
+            df_cur['control_ratio'] = control_ratio
+            df_cur['atkfrm'] = atkfrm
+            df_cur['atkto'] = atkto
+            df_cur['tgtfrm'] = tgtfrm
+            df_cur['tgtto'] = tgtto
+
+            df_val = pd.concat([df_val, df_cur])
+    return df_val
 
 def eval_injected_edges_sbm(model, dataset_name, directionality, size, dropout, lr, wd, heads,attention_dropout,
         splits, runs, train_examples, val_examples, inits, num_edges, hubs_experiment):
@@ -313,7 +374,127 @@ def eval_sbm(model, dataset_name, directionality, size, dropout, lr, wd, heads,a
         df_cur['sbm_num'] = i
         df_val = pd.concat([df_val, df_cur])
     return df_val
+
+
+
+################## Synthetic part #####################################
+
+def load_communities(path):
+    with open(path, 'rb') as handle:
+        ret = pickle.load(handle)
+    return ret
+
+def load_labels(path):
+    label = {}
+    with open(path, 'r') as handle:
+        label = {}
+        for line in handle:
+            s = line.strip().split()
+            label[s[0]] = s[-1]
+    return label
+def agg(x):
+    return len(x.unique())
+
+def calc_uncertainty(df_community,dataset_name):
     
+    if dataset_name == 'cora':
+        df_community.label = df_community.label.apply(lambda x : ''.join([c for c in x if c.isupper()]))
+    
+    mtx = df_community.pivot_table(index='community', columns='label',values='node',aggfunc=agg).fillna(0) / len(df_community)
+#     plt.figure()
+#     sns.heatmap(mtx)
+    
+    communities = df_community.community.unique()
+    labels = df_community.label.unique()
+    
+    def Pmarg(c):
+        return len(df_community[df_community.community == c]) / len(df_community)
+    
+    def Pcond(l,c):
+        return mtx.loc[c,l]/Pmarg(c)
+    
+    H = 0
+    for c in communities:
+        h = 0
+        for l in labels:
+            if Pcond(l,c) == 0:
+                continue
+            h += Pcond(l,c) * np.log2(1./Pcond(l,c))
+        H += h * Pmarg(c)
+    
+    def Pl(l):
+        return len(df_community[df_community.label == l]) / len(df_community)
+    
+    Hl = 0
+    for l in labels:
+        if Pl(l) == 0:
+            continue
+        Hl += Pl(l) * np.log2(1./Pl(l))
+    
+    IG = Hl-H
+    return IG/Hl
+
+def eval_sbm_swap(model, dataset_name, directionality, size, dropout, lr, wd, heads,attention_dropout,
+        splits, runs, train_examples, val_examples, sbm_inits):
+    step = 10
+    isDirected = (directionality != 'undirected')
+    isReversed = (directionality == 'reversed')
+    df_val = pd.DataFrame()
+    
+    
+    for i in range(sbm_inits):
+        print(f'data/graphs/processed/{dataset_name}/{dataset_name}.content')
+        dataset = GraphDataset(f'data/tmp/{dataset_name}{("_" + directionality) if isDirected else ""}-sbm{i}-', dataset_name,
+                               f'data/graphs/sbm/{dataset_name}/{dataset_name}_sbm_{i}.cites',
+                               f'data/graphs/processed/{dataset_name}/{dataset_name}.content',
+                               directed=isDirected, reverse=isReversed)
+        data = dataset[0]
+        
+        community = load_communities(f'data/community_id_dicts/{dataset_name}/{dataset_name}_louvain.pickle')
+        mapping = data.node_name_mapping[0]
+        label = load_labels(f'data/graphs/processed/{dataset_name}/{dataset_name}.content')
+        df_community = pd.DataFrame({'dataset':dataset_name, 'node':node, 'community':community[node], 'label':label[node]} for node in community)
+        df_community['node_id'] = df_community.node.apply(lambda x:mapping[x])
+        
+        n = len(data.y)
+        # select nodes at random
+        shuffled = np.arange(n)
+        np.random.shuffle(shuffled)
+        row = shuffled[:int(n/2)]
+        col = shuffled[int(n/2):int(n/2)*2]
+        assert(len(row) == len(col))
+        
+        for ratio in range(0,100,step):
+            frm = int(ratio/100 * len(row))
+            to = int((ratio+step)/100 * len(row))
+            U = row[frm:to]
+            V = col[frm:to]
+            for u,v in zip(U,V):
+                tmp = data.x[v].detach().clone()
+                data.x[v] = dataset[0].x[u]
+                data.x[u] = tmp
+                
+                tmp = data.y[v].detach().clone()
+                data.y[v] = dataset[0].y[u]
+                data.y[u] = tmp
+                
+                tmp = df_community.loc[df_community.node_id == v, 'community'].values[0]
+                df_community.loc[df_community.node_id == v, 'community'] = df_community.loc[df_community.node_id == u, 'community'].values[0]
+                df_community.loc[df_community.node_id == u, 'community'] = tmp
+                  
+            df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr, splits=splits, runs=runs,
+                          dropout=dropout, wd=wd, heads=heads,attention_dropout=attention_dropout,
+                          train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
+            df_cur['sbm_num'] = i
+            df_cur['ratio'] = ratio
+            df_cur['uncertainty'] = calc_uncertainty(df_community, dataset_name)
+            df_val = pd.concat([df_val, df_cur])
+    return df_val
+
+################## END: Synthetic part #####################################
+
+
+
 def eval_flipped(model, dataset_name, directionality, size, dropout, lr, wd, heads,attention_dropout,
         splits, runs, train_examples, val_examples, percentages=range(10,51,10)):
     print(percentages)

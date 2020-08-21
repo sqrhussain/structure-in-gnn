@@ -1,6 +1,7 @@
 from src.apply_gnn_to_datasets import eval_original, eval_conf, eval_sbm
 from src.apply_gnn_to_datasets import eval_random, eval_erdos, eval_flipped, eval_removed_hubs, eval_added_2hop_edges
-from src.apply_gnn_to_datasets import eval_label_sbm, eval_injected_edges, eval_injected_edges_sbm, eval_injected_edges_degree_cat
+from src.apply_gnn_to_datasets import eval_label_sbm, eval_injected_edges, eval_injected_edges_sbm, eval_injected_edges_constant_nodes
+from src.apply_gnn_to_datasets import eval_sbm_swap, eval_injected_edges_degree_cat,eval_injected_edges_attack_target
 import argparse
 import pandas as pd
 import os
@@ -19,6 +20,10 @@ def parse_args():
                         type=bool,
                         default=False,
                         help='Is SBM evaluation. Default is False.')
+    parser.add_argument('--sbm_swap',
+                        type=bool,
+                        default=False,
+                        help='Is SBM evaluation with synthetic swapping. Default is False.')
     parser.add_argument('--random',
                         type=bool,
                         default=False,
@@ -39,6 +44,14 @@ def parse_args():
                         type=bool,
                         default=False,
                         help='Evaluating on a completely injected_edges_degree_cat graph?. Default is False.')
+    parser.add_argument('--injected_edges_constant_nodes',
+                        type=bool,
+                        default=False,
+                        help='Evaluating on a completely injected_edges_constant_nodes graph?. Default is False.')
+    parser.add_argument('--injected_edges_attack_target',
+                        type=bool,
+                        default=False,
+                        help='Evaluating on a completely injected_edges_attack_target graph?. Default is False.')
     parser.add_argument('--injected_edges_sbm',
                         type=bool,
                         default=False,
@@ -142,11 +155,14 @@ if __name__ == '__main__':
                 val_out = f'reports/results/test_acc/{model}_{dataset}'\
                           f'{"_conf" if args.conf else ""}'\
                           f'{"_sbm" if args.sbm else ""}'\
+                          f'{"_sbm_swap" if args.sbm_swap else ""}'\
                           f'{"_random" if args.random else ""}'\
                           f'{"_erdos" if args.erdos else ""}'\
                           f'{hubs_experiment if args.label_sbm else ""}'\
                           f'{hubs_experiment if args.injected_edges else ""}'\
                           f'{"_degree_cat" if args.injected_edges_degree_cat else ""}'\
+                          f'{"_constant_nodes" if args.injected_edges_constant_nodes else ""}'\
+                          f'{"_attack_target" if args.injected_edges_attack_target else ""}'\
                           f'{hubs_experiment if args.injected_edges_sbm else ""}'\
                           f'{"_flipped" if args.flipped else ""}'\
                           f'{"_removed_hubs" if args.removed_hubs else ""}'\
@@ -166,6 +182,9 @@ if __name__ == '__main__':
                 if args.sbm:
                     df_cur = eval_sbm(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
                              args.train_examples, args.val_examples, 10)
+                elif args.sbm_swap:
+                    df_cur = eval_sbm_swap(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
+                             args.train_examples, args.val_examples, 10)
                 elif args.conf:
                     df_cur = eval_conf(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
                              args.train_examples, args.val_examples, 10)
@@ -177,11 +196,19 @@ if __name__ == '__main__':
                              args.train_examples, args.val_examples, 10)
                 elif args.injected_edges:
                     df_cur = eval_injected_edges(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
-                             args.train_examples, args.val_examples, 5, range(6000,10001,1000), args.hubs_experiment)
+                             args.train_examples, args.val_examples, 5, range(1000,5001,1000), args.hubs_experiment)
                 elif  args.injected_edges_degree_cat:
                     df_cur = eval_injected_edges_degree_cat(model, dataset, directionality, size, dropout, lr, wd,
                             heads, attention_dropout,
                             args.splits, args.runs, args.train_examples, args.val_examples, 5, 1000, 5)
+                elif  args.injected_edges_constant_nodes:
+                    df_cur = eval_injected_edges_constant_nodes(model, dataset, directionality, size, dropout, lr, wd,
+                            heads, attention_dropout,
+                            args.splits, args.runs, args.train_examples, args.val_examples, 5, 0.01, [4,8], 5)
+                elif  args.injected_edges_attack_target:
+                    df_cur = eval_injected_edges_attack_target(model, dataset, directionality, size, dropout, lr, wd,
+                            heads, attention_dropout,
+                            args.splits, args.runs, args.train_examples, args.val_examples, 5, 0.01, [4], 10)
                 elif args.injected_edges_sbm:
                     df_cur = eval_injected_edges_sbm(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
                              args.train_examples, args.val_examples, 5, range(100,2001,100), args.hubs_experiment)

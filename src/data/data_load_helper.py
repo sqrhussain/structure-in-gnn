@@ -86,6 +86,7 @@ def read_network(features_path,edge_path,directed,reverse, convert_to_BoW = Fals
     data = Data(x=x, edge_index=edge_index, y=y)
     
     data.is_reversed = torch.tensor(is_rev,dtype=torch.uint8) 
+    data.node_name_mapping = rename
     
     return data
 

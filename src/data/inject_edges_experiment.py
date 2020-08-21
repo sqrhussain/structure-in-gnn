@@ -8,6 +8,7 @@ import networkx as nx
 from networkx.generators.community import stochastic_block_model
 import argparse
 import os
+from itertools import repeat
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Create datasets with injected edges between/within communities using hubs/normal nodes.")
@@ -29,16 +30,35 @@ def parse_args():
                         type=bool,
                         default=False,
                         help='Is it a degree category experiment, i.e., adding a constant number of edges but attaching to nodes of varying degree categories? Default is False')
-    parser.add_argument('--degree_percentile',
-                        type=int,
-                        default=5,
-                        help='Percentile on which to divide degree in the degree_cat experiment, e.g., 10 means steps of 10%')
     parser.add_argument('--num_injected',
                         type=int,
                         default=500,
                         help='Number of edges to inject in the degree_cat experiment.')
 
+    # The following are arguments for injection by selecting a constant number of nodes and injecting global edges from them.
+    # Only works if --constant_nodes or --attack_target is True
+    parser.add_argument('--constant_nodes',
+                        type=bool,
+                        default=False,
+                        help='Is it by fixing the number of controlled nodes?')
+    parser.add_argument('--attack_target',
+                        type=bool,
+                        default=False,
+                        help='Is it by fixing the number of controlled nodes and trying connecting different percentiles of degree?')
+    parser.add_argument('--control_ratio',
+                        type=float,
+                        default=0.01,
+                        help='How many nodes can we control of the whole network? Must be less than --degree_percentile/100')
+    parser.add_argument('--edges_per_node',
+                        nargs='+',
+                        type=int,
+                        help='How many edges to add to a node? E.g., [1,2,3]')
     
+    # --degree_percentile works for both --degree_cat and --constant_nodes
+    parser.add_argument('--degree_percentile',
+                        type=int,
+                        default=5,
+                        help='Percentile on which to divide degree in the degree_cat experiment, e.g., 10 means steps of 10%')
 
     return parser.parse_args()
 
@@ -238,6 +258,55 @@ def create_label_based_sbm_global_degree_cat(graph_path, labels, output_path, ed
 
     return graph
 
+def create_label_based_sbm_global_constant_nodes(graph_path, labels, output_path, control_ratio, edges_per_node, frm, to, seed=0, gen_sbm=False):
+    graph = get_graph(graph_path, labels, gen_sbm, seed)
+        
+    label_id_to_node_id = create_community_id_to_node_id(labels)
+    labels_list = label_id_to_node_id.keys()
+
+    attackers = get_nodes_with_degree_percentile(graph,frm,to)
+    control_num = int(len(graph.nodes())*control_ratio)
+    assert control_num <= len(attackers), f'control_num={control_num} > len(attackers)={len(attackers)}'
+    # print(attackers)
+    attackers = np.random.choice(attackers, control_num, replace=False).tolist()
+    # print(attackers)
+    print(f'Percentage ({frm}-{to}) controlling {len(attackers)} nodes')
+    # print(type(edges_per_node))
+    rows = []
+    for i in range(edges_per_node):
+        rows = rows + attackers
+    cols = np.random.choice(graph.nodes(),len(attackers) * edges_per_node)
+    edges = [[u,v] for u,v in zip(rows, cols)]
+    graph.add_edges_from(edges)
+    nx.write_edgelist(graph, output_path)
+
+    return graph
+
+def create_label_based_sbm_global_attack_target(graph_path, labels, output_path, control_ratio, edges_per_node, atkfrm, atkto, tgtfrm, tgtto, seed=0, gen_sbm=False):
+    graph = get_graph(graph_path, labels, gen_sbm, seed)
+        
+    label_id_to_node_id = create_community_id_to_node_id(labels)
+    labels_list = label_id_to_node_id.keys()
+
+    control_num = int(len(graph.nodes())*control_ratio)
+    attackers = get_nodes_with_degree_percentile(graph,atkfrm,atkto)
+    assert control_num <= len(attackers), f'control_num={control_num} > len(attackers)={len(attackers)}'
+    attackers = np.random.choice(attackers, control_num, replace=False).tolist()
+    print(f'Percentage ({atkfrm}-{atkto}) controlling {len(attackers)} attacker nodes')
+    rows = []
+    for i in range(edges_per_node):
+        rows = rows + attackers
+
+    targets = get_nodes_with_degree_percentile(graph,tgtfrm,tgtto)
+    targets = np.random.choice(targets, len(rows), replace=True).tolist()
+    cols = targets
+
+    edges = [[u,v] for u,v in zip(rows, cols)]
+    graph.add_edges_from(edges)
+    nx.write_edgelist(graph, output_path)
+
+    return graph
+
 def create_label_based_sbm_global_edges(graph_path, labels, output_path, edges_to_add, seed=0,gen_sbm=False):
     graph = get_graph(graph_path, labels, gen_sbm, seed)
 
@@ -261,7 +330,46 @@ def main():
 
     # labels,remap = load_labels(labels_path)
     # labels = load_communities(labels_path)
-    if args.degree_cat:
+    if args.attack_target:
+        for dataset in args.datasets:
+            graph_path = f'data/graphs/processed/{dataset}/{dataset}.cites'
+            output_dir = f'data/graphs/injected_edges_attack_target/{dataset}'
+            labels_path = f'data/community_id_dicts/{dataset}/{dataset}_louvain.pickle'
+            labels = load_communities(labels_path)
+            print(f'graph: {graph_path}')
+            if not os.path.exists(output_dir):
+                os.mkdir(output_dir)
+            for atkper in range(0,100,args.degree_percentile):
+                atkfrm = atkper
+                atkto = (atkfrm + args.degree_percentile)
+                for tgtper in range(0,100,args.degree_percentile):
+                    for edges_per_node in args.edges_per_node:
+                        for seed in range(args.runs):
+                            tgtfrm = tgtper
+                            tgtto = (tgtfrm + args.degree_percentile)
+                            output_path = output_dir + f'/{dataset}_global_edges{edges_per_node}_nodes{args.control_ratio:.3f}_{seed}_atk{atkfrm}_{atkto}_tgt{tgtfrm}_{tgtto}.cites'
+                            print(f'output: {output_path}')
+                            create_label_based_sbm_global_attack_target(graph_path, labels, output_path, args.control_ratio, edges_per_node,
+                                            atkfrm/100, atkto/100, tgtfrm/100, tgtto/100,seed=seed,gen_sbm=False)
+    elif args.constant_nodes:
+        for dataset in args.datasets:
+            graph_path = f'data/graphs/processed/{dataset}/{dataset}.cites'
+            output_dir = f'data/graphs/injected_edges_constant_nodes/{dataset}'
+            labels_path = f'data/community_id_dicts/{dataset}/{dataset}_louvain.pickle'
+            labels = load_communities(labels_path)
+            print(f'graph: {graph_path}')
+            if not os.path.exists(output_dir):
+                os.mkdir(output_dir)
+            for percentile in range(0,100,args.degree_percentile):
+                for edges_per_node in args.edges_per_node:
+                    for seed in range(args.runs):
+                        output_path = output_dir + f'/{dataset}_global_edges{edges_per_node}_nodes{args.control_ratio:.3f}_{seed}_{percentile}_to_{percentile+args.degree_percentile}.cites'
+                        print(f'output: {output_path}')
+                        frm = percentile/100
+                        to =(percentile+args.degree_percentile)/100
+                        create_label_based_sbm_global_constant_nodes(graph_path, labels, output_path, args.control_ratio, edges_per_node,frm,to,seed=seed,gen_sbm=False)
+
+    elif args.degree_cat:
         for dataset in args.datasets:
             graph_path = f'data/graphs/processed/{dataset}/{dataset}.cites'
             output_dir = f'data/graphs/injected_edges_degree_cat/{dataset}'
