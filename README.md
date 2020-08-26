@@ -9,12 +9,18 @@ Run `python -m src.data.dataset_handle`. This works for Cora, Citeseer, WebKB an
 ### Generating synthetic graphs from the original ones
 #### Configuration model
 Eliminates community structure while keeping the degree sequence.
+
 Use `python -m src.data.create_configuration_model`
+
 #### Stochastic block model
 Eliminates the skew in the degree distribution (approaches a binomial distribution) while aiming to preserve the community structure using Louvain method for community detection.
+
 Use `python -m src.data.create_configuration_model`
+
 #### Erdős–Rényi model
 Eliminates the community structure and turns the degree distribution into a binomial distribution. The only preserved properties are the node sequence (number, identity and features) and an approximate edge density.
+
+Use `python -m src.data.create_random_graph`
 
 ### Hyperparameter optimization
 Run `python -m src.hyperparam_search` with the suitable parameters. You can modify the ranges within the python file. Stores validation results in `reports/results/eval/` which will be necessary to run `train.py`.
