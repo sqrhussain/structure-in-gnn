@@ -11,6 +11,7 @@ import os
 import argparse
 import numpy as np
 import pickle
+from src.evaluation.network_split import NetworkSplitShchur
 
 def parse_args():
 
@@ -395,17 +396,16 @@ def load_labels(path):
 def agg(x):
     return len(x.unique())
 
-def calc_uncertainty(df_community,dataset_name):
+def calc_uncertainty(df_community,dataset_name,labeled=False,seed=0):
     
     if dataset_name == 'cora':
         df_community.label = df_community.label.apply(lambda x : ''.join([c for c in x if c.isupper()]))
     
-    mtx = df_community.pivot_table(index='community', columns='label',values='node',aggfunc=agg).fillna(0) / len(df_community)
-#     plt.figure()
-#     sns.heatmap(mtx)
-    
+    if labeled:
+        df_community = df_community[df_community[f'labeled{seed}']]
     communities = df_community.community.unique()
     labels = df_community.label.unique()
+    mtx = df_community.pivot_table(index='community', columns='label',values='node',aggfunc=agg).fillna(0) / len(df_community)
     
     def Pmarg(c):
         return len(df_community[df_community.community == c]) / len(df_community)
@@ -435,19 +435,26 @@ def calc_uncertainty(df_community,dataset_name):
     return IG/Hl
 
 def eval_sbm_swap(model, dataset_name, directionality, size, dropout, lr, wd, heads,attention_dropout,
-        splits, runs, train_examples, val_examples, sbm_inits):
+        splits, runs, train_examples, val_examples, sbm_inits, is_sbm):
     step = 10
     isDirected = (directionality != 'undirected')
     isReversed = (directionality == 'reversed')
     df_val = pd.DataFrame()
     
     
-    for i in range(sbm_inits):
+    for i in range(sbm_inits if is_sbm else 1):
         print(f'data/graphs/processed/{dataset_name}/{dataset_name}.content')
-        dataset = GraphDataset(f'data/tmp/{dataset_name}{("_" + directionality) if isDirected else ""}-sbm{i}-', dataset_name,
+        if is_sbm:
+          dataset = GraphDataset(f'data/tmp/{dataset_name}{("_" + directionality) if isDirected else ""}-sbm{i}-', dataset_name,
                                f'data/graphs/sbm/{dataset_name}/{dataset_name}_sbm_{i}.cites',
                                f'data/graphs/processed/{dataset_name}/{dataset_name}.content',
                                directed=isDirected, reverse=isReversed)
+        else:
+          dataset = GraphDataset(f'data/tmp/{dataset_name}{("_" + directionality) if isDirected else ""}-', dataset_name,
+                               f'data/graphs/processed/{dataset_name}/{dataset_name}.cites',
+                               f'data/graphs/processed/{dataset_name}/{dataset_name}.content',
+                               directed=isDirected, reverse=isReversed)
+
         data = dataset[0]
         
         community = load_communities(f'data/community_id_dicts/{dataset_name}/{dataset_name}_louvain.pickle')
@@ -455,6 +462,11 @@ def eval_sbm_swap(model, dataset_name, directionality, size, dropout, lr, wd, he
         label = load_labels(f'data/graphs/processed/{dataset_name}/{dataset_name}.content')
         df_community = pd.DataFrame({'dataset':dataset_name, 'node':node, 'community':community[node], 'label':label[node]} for node in community)
         df_community['node_id'] = df_community.node.apply(lambda x:mapping[x])
+
+        for seed in range(splits):
+            split = NetworkSplitShchur(dataset, train_examples_per_class=train_examples,early_examples_per_class=0,
+                 val_examples_per_class=val_examples, split_seed=seed)
+            df_community[f'labeled{seed}'] = df_community.node_id.apply(lambda x: (split.train_mask[x]).numpy())
         
         n = len(data.y)
         # select nodes at random
@@ -464,6 +476,18 @@ def eval_sbm_swap(model, dataset_name, directionality, size, dropout, lr, wd, he
         col = shuffled[int(n/2):int(n/2)*2]
         assert(len(row) == len(col))
         
+        df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr, splits=splits, runs=runs,
+                      dropout=dropout, wd=wd, heads=heads,attention_dropout=attention_dropout,
+                      train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
+        if is_sbm:
+          df_cur['sbm_num'] = i
+        df_cur['ratio'] = 0
+        df_cur['uncertainty'] = calc_uncertainty(df_community, dataset_name)
+        ulc = [calc_uncertainty(df_community, dataset_name, True, seed) for seed in range(splits)]
+        df_cur['uncertainty_known'] = [ulc]
+        print(df_cur)
+        df_val = pd.concat([df_val, df_cur])
+
         for ratio in range(0,100,step):
             frm = int(ratio/100 * len(row))
             to = int((ratio+step)/100 * len(row))
@@ -485,9 +509,13 @@ def eval_sbm_swap(model, dataset_name, directionality, size, dropout, lr, wd, he
             df_cur = eval(model=model, dataset=dataset, channel_size=size, lr=lr, splits=splits, runs=runs,
                           dropout=dropout, wd=wd, heads=heads,attention_dropout=attention_dropout,
                           train_examples = train_examples, val_examples = val_examples,isDirected=isDirected)
-            df_cur['sbm_num'] = i
-            df_cur['ratio'] = ratio
+            if is_sbm:
+              df_cur['sbm_num'] = i
+            df_cur['ratio'] = ratio+step
             df_cur['uncertainty'] = calc_uncertainty(df_community, dataset_name)
+            ulc = [calc_uncertainty(df_community, dataset_name, True, seed) for seed in range(splits)]
+            df_cur['uncertainty_known'] = [ulc]
+            print(df_cur)
             df_val = pd.concat([df_val, df_cur])
     return df_val
 

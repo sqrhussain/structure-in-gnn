@@ -24,6 +24,10 @@ def parse_args():
                         type=bool,
                         default=False,
                         help='Is SBM evaluation with synthetic swapping. Default is False.')
+    parser.add_argument('--swap',
+                        type=bool,
+                        default=False,
+                        help='Is it evaluation with synthetic swapping. Default is False.')
     parser.add_argument('--random',
                         type=bool,
                         default=False,
@@ -156,6 +160,7 @@ if __name__ == '__main__':
                           f'{"_conf" if args.conf else ""}'\
                           f'{"_sbm" if args.sbm else ""}'\
                           f'{"_sbm_swap" if args.sbm_swap else ""}'\
+                          f'{"_swap" if args.swap else ""}'\
                           f'{"_random" if args.random else ""}'\
                           f'{"_erdos" if args.erdos else ""}'\
                           f'{hubs_experiment if args.label_sbm else ""}'\
@@ -184,7 +189,10 @@ if __name__ == '__main__':
                              args.train_examples, args.val_examples, 10)
                 elif args.sbm_swap:
                     df_cur = eval_sbm_swap(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
-                             args.train_examples, args.val_examples, 10)
+                             args.train_examples, args.val_examples, 10, True)
+                elif args.swap:
+                    df_cur = eval_sbm_swap(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
+                             args.train_examples, args.val_examples, 10, False)
                 elif args.conf:
                     df_cur = eval_conf(model, dataset, directionality, size, dropout, lr, wd, heads, attention_dropout, args.splits, args.runs,
                              args.train_examples, args.val_examples, 10)
