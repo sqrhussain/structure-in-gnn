@@ -4,7 +4,7 @@
 Dependencies: to be added
 
 ### Datasets
-Run `python -m src.data.dataset_handle`. This works for Cora, Citeseer, WebKB and Pubmed without hassle. Needs some tweaks to work on other datasets (to be fixed/explained).
+First, run `python -m src.data.dataset_handle` to download and transform the datasets. This works for Cora, Citeseer, WebKB and Pubmed without hassle. Needs some tweaks to work on other datasets (to be fixed/explained).
 
 ### Generating synthetic graphs from the original ones
 #### Configuration model
