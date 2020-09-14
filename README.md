@@ -28,3 +28,6 @@ Run `python -m src.hyperparam_search` with the suitable parameters. You can modi
 ### Training and evaluating
 Run `python -m src.train` with the suitable parameters. This file uses the resutls from the previous step and stores the evaluation resutls in `reports/results/test_acc`.
 
+### Computing the uncertainty coefficient
+View the `notebooks/Uncertainty coefficient.ipynb` for details
+
