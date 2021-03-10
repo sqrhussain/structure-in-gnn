@@ -14,7 +14,7 @@ def generate_conf_model(G,seed=0):
 
 def generate_modified_conf_model(G, seed=0):
     node_labels_dict = nx.get_node_attributes(G,'label')
-    unique_node_labels = set(node_labels.values())
+    unique_node_labels = set(node_labels_dict.values())
     same_label_subgraphs = {}
     for node_label in unique_node_labels:
         same_label_subgraphs[node_label] = nx.DiGraph()
