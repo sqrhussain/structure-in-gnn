@@ -16,8 +16,6 @@ def generate_conf_model(G,seed=0):
 
 def generate_modified_conf_model(G, seed=0):
     node_labels_dict = nx.get_node_attributes(G,'label')
-    # print(type(node_labels_dict))
-    # print(list(node_labels_dict.values()))
     unique_node_labels = set(node_labels_dict.values())
     same_label_subgraphs = {}
     for node_label in unique_node_labels:
