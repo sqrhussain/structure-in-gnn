@@ -88,6 +88,8 @@ def train_gnn(dataset, channels, modelType, architecture,
         model.train()
     chosen.eval()  # enter eval phase
     _, pred = chosen(data).max(dim=1)  # take prediction out of softmax
+    # print(torch.transpose(data.edge_index, 0, 1))
+    print(f'pred: {pred}')
     correct = float(pred[split.val_mask].eq(data.y[split.val_mask]).sum().item())
     val_acc = correct / float(split.val_mask.sum().item())
     # val_f1 = f1_score(data.y[split.val_mask].detach().cpu().numpy(),pred[split.val_mask].detach().cpu().numpy(),average='micro')
@@ -97,6 +99,69 @@ def train_gnn(dataset, channels, modelType, architecture,
         # test_f1 = f1_score(data.y[split.test_mask].detach().cpu().numpy(),pred[split.test_mask].detach().cpu().numpy(),average='micro')
         return val_acc, stopped_at, test_acc
     return val_acc, stopped_at, []
+
+
+
+def train_and_get_embeddings(dataset, channels, modelType, architecture,
+              lr, wd, heads, dropout, attention_dropout,
+              epochs,
+              train_examples, val_examples,
+              split_seed=0, init_seed=0,
+              test_score=False, actual_predictions=False, add_complete_edges=False):
+    # training process (without batches/transforms)
+
+    # we assume that the only sources of randomness are the data split and the initialization.
+    torch.manual_seed(init_seed)
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    data = dataset[0].to(device)
+    split = NetworkSplitShchur(dataset, train_examples_per_class=train_examples,early_examples_per_class=0,
+                 val_examples_per_class=val_examples, split_seed=split_seed)
+
+    # for each class, add a complete graph of its labeled nodes
+    if add_complete_edges:
+        additional_edge_index = build_complete_graph_per_class(data, split)
+        data.edge_index = torch.cat([data.edge_index, torch.tensor(additional_edge_index).to(device)], 1)
+
+    if modelType == GATConv:
+        model = architecture(dataset, channels, dropout=dropout, heads=heads,attention_dropout=attention_dropout).to(device)
+    elif modelType == APPNP:
+        model = architecture(dataset, channels, dropout=dropout).to(device)
+    else:
+        model = architecture(modelType, dataset, channels, dropout).to(device)
+
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
+    model.train()  # to enter training phase
+    maxacc = -1
+    chosen = None
+    accs = []
+    # f1s = []
+    stopped_at = epochs
+    for epoch in range(epochs):
+        optimizer.zero_grad()  # saw this a lot in the beginning, maybe resetting gradients (not to accumulate)
+        out = model(data)  # this calls the forward method apparently
+        loss = F.nll_loss(out[split.train_mask], data.y[split.train_mask])  # nice indexing, easy and short
+        loss.backward()  # magic: real back propagation step, takes care of the gradients and stuff
+        optimizer.step()  # maybe updates the params to be optimized
+
+        model.eval()
+        _, pred = model(data).max(dim=1)  # take prediction out of softmax
+        correct = float(pred[split.val_mask].eq(data.y[split.val_mask]).sum().item())
+        acc = correct / float(split.val_mask.sum().item())
+        # f1 = f1_score(data.y[split.val_mask].detach().cpu().numpy(),pred[split.val_mask].detach().cpu().numpy(),average='micro')
+        accs.append(acc)
+        # f1s.append(f1)
+        if acc > maxacc:
+            maxacc = acc
+            chosen = copy.copy(model)
+        if epoch > 10 and acc * 10 < sum(accs[-11:-1]):
+            stopped_at = epoch
+            break
+        model.train()
+    chosen.eval()  # enter eval phase
+    _, pred = chosen(data)
+    return chosen.embedding
 
 
 def train_gnn_multiple_runs(dataset, channels, modelType, architecture,

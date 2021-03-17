@@ -22,6 +22,7 @@ class MonoModel(torch.nn.Module):
             x = F.relu(x)
             x = F.dropout(x, training=self.training, p=self.dropout)
 
+        self.embedding = x
         # Last layer
         x = self.conv[-1](x, edge_index)
         x = F.log_softmax(x, dim=1)
