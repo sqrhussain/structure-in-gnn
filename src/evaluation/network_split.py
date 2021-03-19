@@ -11,7 +11,7 @@ class NetworkSplitShchur:
                  val_examples_per_class=30 , split_seed = 0):
         filename_prefix = data.name
         data = data[0]
-        filename = f'data/split_masks/{filename_prefix}-split{split_seed}.json'
+        filename = f'../data/split_masks/{filename_prefix}-split{split_seed}.json'
         if os.path.exists(filename):
             with open(filename) as json_file:
                 stored = json.load(json_file)
@@ -53,12 +53,13 @@ class NetworkSplitShchur:
 
         rest = [x for x in rest if not self.val_mask[x]]
         self.test_mask = [1 if i in rest else 0 for i in indices]
-        
+
         tostore = {'train_mask':self.train_mask,
                     'early_mask':self.early_mask,
                     'val_mask':self.val_mask,
                     'test_mask':self.test_mask}
         
+
         self.train_mask = torch.BoolTensor(self.train_mask)
         self.early_mask = torch.BoolTensor(self.early_mask)
         self.val_mask = torch.BoolTensor(self.val_mask)
