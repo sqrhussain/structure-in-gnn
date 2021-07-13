@@ -141,5 +141,5 @@ cython_debug/
 /nohup/
 /reports/
 /scripts_to_organize/
-# /notebooks/
-# /data/
+/data/
+/notebooks/
