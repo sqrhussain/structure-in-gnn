@@ -1,7 +1,28 @@
+*!!! DEPRECATED !!!* - Please refer to (https://github.com/sqrhussain/homophily-community-gnn)
+
 # Network structure impact on graph neural networks
 
 
 Dependencies: to be added
+
+### Papers
+This code is the basis for our
+
+* [On the Impact of Communities on Semi-supervised Classification Using Graph Neural Networks](https://link.springer.com/chapter/10.1007/978-3-030-65351-4_2)
+* The Interplay between Communities and Homophily in Semi-supervised Classification Using Graph Neural Networks - [a preprint is currently available](https://sqrhussain.github.io/papers/apns21.pdf)
+
+### Citation
+If you use our code/paper please cite our work :)
+```
+@inproceedings{hussain2020impact,
+  title={On the Impact of Communities on Semi-supervised Classification Using Graph Neural Networks},
+  author={Hussain, Hussain and Duricic, Tomislav and Lex, Elisabeth and Kern, Roman and Helic, Denis},
+  booktitle={International Conference on Complex Networks and Their Applications},
+  pages={15--26},
+  year={2020},
+  organization={Springer}
+}
+```
 
 ### Datasets
 First, run `python -m src.data.dataset_handle` to download and transform the datasets. This works for Cora, Citeseer, WebKB and Pubmed without hassle. Needs some tweaks to work on other datasets (to be fixed/explained).
